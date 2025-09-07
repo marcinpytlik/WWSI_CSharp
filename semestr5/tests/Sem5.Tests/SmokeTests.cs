@@ -1,0 +1,1 @@
+using Xunit; public class SmokeTests{[Fact] public void Ok()=>Assert.True(2+2==4);}

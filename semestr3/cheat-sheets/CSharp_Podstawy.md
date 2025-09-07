@@ -1,0 +1,4 @@
+- var/implicit
+- kolekcje generyczne
+- wyjątki
+- SOLID skrót

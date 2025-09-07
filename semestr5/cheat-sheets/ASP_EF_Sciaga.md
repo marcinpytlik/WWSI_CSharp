@@ -1,0 +1,2 @@
+- Minimal APIs: MapGet/Post/Put/Delete
+- EF Core: DbContext, DbSet, migracje

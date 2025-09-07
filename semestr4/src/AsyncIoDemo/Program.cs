@@ -1,0 +1,1 @@
+using System.Net.Http.Json; var http=new HttpClient(); var todo=await http.GetFromJsonAsync<Todo>("https://jsonplaceholder.typicode.com/todos/1"); Console.WriteLine(todo?.Title); public record Todo(int Id,string Title,bool Completed);

@@ -1,0 +1,1 @@
+using Xunit; public class CircleTests{[Fact] public void Area(){var c=new Circle(2); Assert.InRange(c.Area(),12.56,12.57);} }

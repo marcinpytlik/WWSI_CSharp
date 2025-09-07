@@ -1,0 +1,1 @@
+var b=WebApplication.CreateBuilder(args); var a=b.Build(); a.MapGet("/health",()=>Results.Ok(new{status="ok"})); a.Run();

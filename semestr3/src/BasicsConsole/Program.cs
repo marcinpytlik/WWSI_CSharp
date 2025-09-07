@@ -1,0 +1,1 @@
+Console.WriteLine("Semestr 3 – BasicsConsole");

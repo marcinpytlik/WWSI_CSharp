@@ -1,0 +1,1 @@
+public sealed class Circle: Shape { public double R{get;} public Circle(double r)=>R=r; public override double Area()=>Math.PI*R*R;}

@@ -1,0 +1,1 @@
+var xs=new[]{1,2,3,4,5}; var even=xs.Where(x=>x%2==0); Console.WriteLine(string.Join(",",even));
