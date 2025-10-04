@@ -1,0 +1,6 @@
+bin/
+obj/
+.vscode/.ropeproject/
+*.user
+*.suo
+.vs/

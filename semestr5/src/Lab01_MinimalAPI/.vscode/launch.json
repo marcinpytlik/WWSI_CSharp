@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch API (watch)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Api/bin/Debug/net9.0/Api.dll",
+      "preLaunchTask": "build",
+      "cwd": "${workspaceFolder}/src/Api",
+      "environment": [ { "name": "ASPNETCORE_ENVIRONMENT", "value": "Development" } ]
+    }
+  ]
+}
