@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dotnet build",
+      "type": "shell",
+      "command": "dotnet build",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet run (HelloDocker)",
+      "type": "shell",
+      "command": "dotnet run --project HelloDocker",
+      "group": "test"
+    }
+  ]
+}

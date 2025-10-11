@@ -1,0 +1,10 @@
+{
+  "name": "dotnet9-workspace",
+  "image": "mcr.microsoft.com/dotnet/sdk:9.0",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "features": {
+    "ghcr.io/devcontainers/features/powershell:1": {}
+  },
+  "postCreateCommand": "dotnet --info"
+}

@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Launch (HelloDocker)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/HelloDocker/bin/Debug/net9.0/HelloDocker.dll",
+      "cwd": "${workspaceFolder}/HelloDocker",
+      "console": "integratedTerminal",
+      "preLaunchTask": "dotnet build"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+.vs/
+.vscode/.history/
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.cache
+*.log
