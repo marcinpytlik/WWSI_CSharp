@@ -1,0 +1,6 @@
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.csproj.AssemblyReference.cache
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.AssemblyInfoInputs.cache
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.AssemblyInfo.cs
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.csproj.CoreCompileInputs.cache
+c:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\tests\Basics.Tests\obj\Debug\net8.0\Basics.Tests.sourcelink.json

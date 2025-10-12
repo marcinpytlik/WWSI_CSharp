@@ -8,24 +8,25 @@
     "net8.0": []
   },
   "packageFolders": {
-    "C:\\Users\\marci\\.nuget\\packages\\": {}
+    "C:\\Users\\blad\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\marci\\Documents\\Github\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\BasicsConsole.csproj",
+      "projectUniqueName": "c:\\Users\\blad\\Documents\\GitHub\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\BasicsConsole.csproj",
       "projectName": "BasicsConsole",
-      "projectPath": "C:\\Users\\marci\\Documents\\Github\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\BasicsConsole.csproj",
-      "packagesPath": "C:\\Users\\marci\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\marci\\Documents\\Github\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\obj\\",
+      "projectPath": "c:\\Users\\blad\\Documents\\GitHub\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\BasicsConsole.csproj",
+      "packagesPath": "C:\\Users\\blad\\.nuget\\packages\\",
+      "outputPath": "c:\\Users\\blad\\Documents\\GitHub\\WWSI_CSharp\\semestr3\\src\\BasicsConsole\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\marci\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\blad\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -44,7 +45,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net8.0": {
@@ -60,12 +61,30 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[8.0.17, 8.0.17]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[8.0.17, 8.0.17]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[8.0.17, 8.0.17]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[8.0.17, 8.0.17]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.205/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

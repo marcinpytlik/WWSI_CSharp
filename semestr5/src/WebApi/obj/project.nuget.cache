@@ -1,8 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "dOrd6FiZNPA=",
+  "dgSpecHash": "WbX/L1Tq9F8=",
   "success": true,
-  "projectFilePath": "C:\\Users\\marci\\Documents\\Github\\WWSI_CSharp\\semestr5\\src\\WebApi\\WebApi.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "c:\\Users\\blad\\Documents\\GitHub\\WWSI_CSharp\\semestr5\\src\\WebApi\\WebApi.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\blad\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.17\\microsoft.netcore.app.ref.8.0.17.nupkg.sha512",
+    "C:\\Users\\blad\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.17\\microsoft.windowsdesktop.app.ref.8.0.17.nupkg.sha512",
+    "C:\\Users\\blad\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.17\\microsoft.aspnetcore.app.ref.8.0.17.nupkg.sha512",
+    "C:\\Users\\blad\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.17\\microsoft.netcore.app.host.win-x64.8.0.17.nupkg.sha512"
+  ],
   "logs": []
 }
