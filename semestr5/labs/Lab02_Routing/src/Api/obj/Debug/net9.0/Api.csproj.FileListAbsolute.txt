@@ -1,0 +1,8 @@
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.csproj.AssemblyReference.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.AssemblyInfoInputs.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.AssemblyInfo.cs
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.csproj.CoreCompileInputs.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr5\labs\Lab02_Routing\src\Api\obj\Debug\net9.0\Api.sourcelink.json
