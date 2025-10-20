@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run (wybierz klasę Main)",
+      "type": "shell",
+      "command": "dotnet run -p:StartupObject=${input:startObj}",
+      "problemMatcher": "$msCompile"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "startObj",
+      "type": "pickString",
+      "description": "Wybierz klasę z metodą Main",
+      "options": [
+        "App.HelloApp",
+        "App.MathApp",
+        "App.ParityApp"
+      ],
+      "default": "App.HelloApp"
+    }
+  ]
+}
