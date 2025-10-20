@@ -1,0 +1,15 @@
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\bin\Debug\net8.0\LabMath.exe
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\bin\Debug\net8.0\LabMath.deps.json
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\bin\Debug\net8.0\LabMath.runtimeconfig.json
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\bin\Debug\net8.0\LabMath.dll
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\bin\Debug\net8.0\LabMath.pdb
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.AssemblyInfoInputs.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.AssemblyInfo.cs
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.csproj.CoreCompileInputs.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.sourcelink.json
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.dll
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\refint\LabMath.dll
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.pdb
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\LabMath.genruntimeconfig.cache
+C:\Users\blad\Documents\GitHub\WWSI_CSharp\semestr3\exercises\Tydzien2\src\LabMath\obj\Debug\net8.0\ref\LabMath.dll
