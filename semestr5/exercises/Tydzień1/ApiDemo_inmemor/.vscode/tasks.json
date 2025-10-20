@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "args": ["build", "src/MinimalApiDemo.csproj"],
+      "type": "process",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run",
+      "command": "dotnet",
+      "args": ["run", "--project", "src/MinimalApiDemo.csproj"],
+      "type": "process",
+      "problemMatcher": "$msCompile",
+      "isBackground": true
+    }
+  ]
+}

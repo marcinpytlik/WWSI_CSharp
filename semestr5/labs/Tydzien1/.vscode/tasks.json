@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "tests/Api.Tests/Api.Tests.csproj", "-l", "trx"],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run:api",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["watch", "run", "--project", "src/Api/Api.csproj"],
+      "problemMatcher": "$msCompile",
+      "isBackground": true
+    }
+  ]
+}
