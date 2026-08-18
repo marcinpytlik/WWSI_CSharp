@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo30_HealthChecks</AssemblyName>
+    <RootNamespace>Demo30</RootNamespace>
+  </PropertyGroup>
+</Project>

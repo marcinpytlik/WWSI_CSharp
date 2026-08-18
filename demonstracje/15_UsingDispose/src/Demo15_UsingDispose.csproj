@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo15_UsingDispose</AssemblyName>
+    <RootNamespace>Demo15</RootNamespace>
+  </PropertyGroup>
+</Project>

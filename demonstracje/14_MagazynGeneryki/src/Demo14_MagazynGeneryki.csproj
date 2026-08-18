@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo14_MagazynGeneryki</AssemblyName>
+    <RootNamespace>Demo14</RootNamespace>
+  </PropertyGroup>
+</Project>
