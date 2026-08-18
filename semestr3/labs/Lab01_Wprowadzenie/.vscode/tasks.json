@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "args": ["build"],
+      "type": "process",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test",
+      "command": "dotnet",
+      "args": ["test", "--collect:\"XPlat Code Coverage\""],
+      "type": "process",
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "format",
+      "command": "dotnet",
+      "args": ["format"],
+      "type": "process"
+    }
+  ]
+}

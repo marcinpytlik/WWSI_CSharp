@@ -1,0 +1,7 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "build all", "type": "process", "command": "dotnet", "args": ["build"], "problemMatcher": "$msCompile" },
+    { "label": "test all",  "type": "process", "command": "dotnet", "args": ["test"],  "problemMatcher": "$msCompile" }
+  ]
+}

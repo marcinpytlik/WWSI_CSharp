@@ -1,0 +1,13 @@
+# Build
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+*.userprefs
+*.DS_Store
+.vscode/.history
+
+# Coverage
+coverage.cobertura.xml
+coverage.opencover.xml
