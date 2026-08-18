@@ -362,6 +362,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_11_KolejkaRabb
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_11_KolejkaRabbitSql_tests_Demo11_KolejkaRabbitSql.Tests", "demonstracje\11_KolejkaRabbitSql\tests\Demo11_KolejkaRabbitSql.Tests.csproj", "{E5459064-9245-54A0-BFBD-5AE45824C6E6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_12_EfCoreSqlLeastPrivilege_src_Shared_Demo12_Shared", "demonstracje\12_EfCoreSqlLeastPrivilege\src\Shared\Demo12_Shared.csproj", "{EBCBDFF1-FB3E-566B-A0A6-7202AA846C93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_12_EfCoreSqlLeastPrivilege_src_CodeFirst_Demo12_CodeFirst", "demonstracje\12_EfCoreSqlLeastPrivilege\src\CodeFirst\Demo12_CodeFirst.csproj", "{7D2012B4-CB7B-5689-9B88-7EA99690FE4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_12_EfCoreSqlLeastPrivilege_src_DatabaseFirst_Demo12_DatabaseFirst", "demonstracje\12_EfCoreSqlLeastPrivilege\src\DatabaseFirst\Demo12_DatabaseFirst.csproj", "{A29C0993-7E6F-5D3D-9F4C-3017E5F2A91B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demonstracje_12_EfCoreSqlLeastPrivilege_tests_Demo12_EfCoreSqlLeastPrivilege.Tests", "demonstracje\12_EfCoreSqlLeastPrivilege\tests\Demo12_EfCoreSqlLeastPrivilege.Tests.csproj", "{8B347213-75A9-5424-9C7A-86EE70416AB1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1088,6 +1096,22 @@ Global
 		{E5459064-9245-54A0-BFBD-5AE45824C6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5459064-9245-54A0-BFBD-5AE45824C6E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5459064-9245-54A0-BFBD-5AE45824C6E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBCBDFF1-FB3E-566B-A0A6-7202AA846C93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBCBDFF1-FB3E-566B-A0A6-7202AA846C93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBCBDFF1-FB3E-566B-A0A6-7202AA846C93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBCBDFF1-FB3E-566B-A0A6-7202AA846C93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D2012B4-CB7B-5689-9B88-7EA99690FE4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D2012B4-CB7B-5689-9B88-7EA99690FE4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D2012B4-CB7B-5689-9B88-7EA99690FE4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D2012B4-CB7B-5689-9B88-7EA99690FE4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A29C0993-7E6F-5D3D-9F4C-3017E5F2A91B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A29C0993-7E6F-5D3D-9F4C-3017E5F2A91B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A29C0993-7E6F-5D3D-9F4C-3017E5F2A91B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A29C0993-7E6F-5D3D-9F4C-3017E5F2A91B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B347213-75A9-5424-9C7A-86EE70416AB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B347213-75A9-5424-9C7A-86EE70416AB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B347213-75A9-5424-9C7A-86EE70416AB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B347213-75A9-5424-9C7A-86EE70416AB1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
