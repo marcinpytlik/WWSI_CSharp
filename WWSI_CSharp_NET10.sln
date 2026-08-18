@@ -310,6 +310,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "semestr4_labs_tests_Task29_
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "semestr4_labs_tests_Task30_JsonRoundtripTestTarget_Tests_Task30_JsonRoundtripTestTarget_Tests", "semestr4\labs\tests\Task30_JsonRoundtripTestTarget.Tests\Task30_JsonRoundtripTestTarget.Tests.csproj", "{10CF22AC-12DB-5BD2-BDA5-64FA454788BC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "semestr5_labs_Lab01_MinimalAPI_src_Api", "semestr5\labs\Lab01_MinimalAPI\src\Api\Api.csproj", "{477E1E4A-EE6B-598D-A088-E14460C5F301}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "semestr5_labs_Lab01_MinimalAPI_tests_Api_Tests", "semestr5\labs\Lab01_MinimalAPI\tests\Api.Tests\Api.Tests.csproj", "{9347923C-2A0C-524B-800C-89140FC3B542}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -932,6 +936,14 @@ Global
 		{10CF22AC-12DB-5BD2-BDA5-64FA454788BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10CF22AC-12DB-5BD2-BDA5-64FA454788BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10CF22AC-12DB-5BD2-BDA5-64FA454788BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{477E1E4A-EE6B-598D-A088-E14460C5F301}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{477E1E4A-EE6B-598D-A088-E14460C5F301}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{477E1E4A-EE6B-598D-A088-E14460C5F301}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{477E1E4A-EE6B-598D-A088-E14460C5F301}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9347923C-2A0C-524B-800C-89140FC3B542}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9347923C-2A0C-524B-800C-89140FC3B542}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9347923C-2A0C-524B-800C-89140FC3B542}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9347923C-2A0C-524B-800C-89140FC3B542}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

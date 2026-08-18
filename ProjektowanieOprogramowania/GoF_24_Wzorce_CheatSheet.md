@@ -2,7 +2,11 @@
 
 Podział: **Kreacyjne**, **Strukturalne**, **Czynnościowe**. Każdy wzorzec: krótki opis, kiedy użyć, mikro‑przykład w C# (minimalny, ale kompilowalny po uzupełnieniu przestrzeni nazw).
 
-> Uwaga: w realnych projektach łącz wzorce z DI/IoC (np. `Microsoft.Extensions.DependencyInjection`), logowaniem i testami jednostkowymi.
+> W realnych projektach łącz wzorce z DI (`Microsoft.Extensions.DependencyInjection`), logowaniem i testami.
+> **Nie używaj** Singletona do stanu użytkownika (w ASP.NET: `AddSingleton` w kontenerze).
+> **Nie pisz** Interpretera dla pełnego języka — parser + AST albo gotowy silnik.
+> **Visitor** boli, gdy hierarchie często się zmieniają; wtedy pattern matching.
+> **Flyweight** dopiero przy mierzalnym koszcie pamięci.
 
 ---
 
@@ -60,7 +64,7 @@ class QueryBuilder {
 ```csharp
 public record EmailTemplate(string Subject, string Body)
 {
-    public EmailTemplate Clone() => this with { };
+    public EmailTemplate Duplicate() => this with { };
 }
 ```
 

@@ -1,5 +1,13 @@
-# Zadanie 04 – opis (Semestr 4)
+# Zadanie 04 – Warstwy + repozytorium
 
-- Treść zadania 4
-- Kryteria
-- Punktacja
+**Termin:** tydzień 8
+
+## Treść
+
+`IProductRepository` + `ProductService` + cienkie CLI albo cienkie API.
+Implementacja in-memory. Walidacja ceny > 0 w serwisie, nie w „UI”.
+
+## Kryteria
+
+- [ ] UI nie sięga do listy wewnętrznej repo
+- [ ] test serwisu z fake repo

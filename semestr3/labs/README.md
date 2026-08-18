@@ -1,8 +1,7 @@
-# Szczegółowe laboratoria (.NET 10, VS Code)
+# Laboratoria semestr 3 (.NET 10)
 
-Ten pakiet zawiera rozwinięte instrukcje do laboratoriów 01–12. Każdy folder/lab ma spójny układ, sekcje: Cel, Przygotowanie, Konfiguracja VS Code, Zadania, Testy, Weryfikacja, Kryteria akceptacji, Sprzątanie, Dla ambitnych.
+Każdy lab ma krótką checklistę (`LabXX_....md`) i instrukcję szczegółową (`*_Szczegolowe.md`) **pod konkretny temat**.
 
-> Preferencje: VS Code, .NET 10, xUnit, Git, PowerShell 7.
+Referencyjny kod: [`Lab01_Wprowadzenie/`](Lab01_Wprowadzenie/).
 
-## Spis plików
-- *_Szczegolowe.md*: pełne instrukcje do danego labu.
+Wymagania: .NET SDK 10.x, xUnit, Git.

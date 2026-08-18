@@ -1,5 +1,12 @@
-# Zadanie 04 – opis (Semestr 5)
+# Zadanie 04 – Relacja User–Tasks
 
-- Treść zadania 4
-- Kryteria
-- Punktacja
+**Termin:** tydzień 6
+
+## Treść
+
+1–n, DTO bez cykli, `GET /users/{id}/tasks`.
+
+## Kryteria
+
+- [ ] Fluent API relacji
+- [ ] 404 tylko gdy brak usera, nie gdy brak tasków

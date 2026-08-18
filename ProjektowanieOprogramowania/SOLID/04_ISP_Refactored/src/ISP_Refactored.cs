@@ -6,6 +6,6 @@ public interface IAdminOps { void Truncate(); }
 
 public class SimpleReader : IReader<int>
 {
-    public int? Get(int id) => id;
+    public int Get(int id) => id;
     public IEnumerable<int> All() => new[] { 1, 2, 3 };
 }

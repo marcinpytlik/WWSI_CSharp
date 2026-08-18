@@ -1,39 +1,37 @@
 # Migracja repozytorium do .NET 10
 
-Repozytorium zostało ujednolicone do .NET 10.
+Repozytorium jest ujednolicone do **.NET 10 / C# 14**.
 
-## Zakres zmian
+## Zakres
 
-- wszystkie projekty SDK-style używają `net10.0`,
-- materiały laboratoryjne i przykładowe polecenia `dotnet new` wskazują `net10.0`,
-- ścieżki uruchomieniowe w materiałach zostały zmienione na `bin/Debug/net10.0`,
-- przykłady ASP.NET Core używają `Microsoft.AspNetCore.Mvc.Testing` 10.0.10,
-- przykłady Swagger/OpenAPI używają `Swashbuckle.AspNetCore` 10.2.3,
-- odniesienia tekstowe do .NET 8/.NET 9 zostały ujednolicone do .NET 10,
-- odniesienia do C# 13 zostały zmienione na C# 14,
-- solution laboratoriów semestru 4 została przemianowana na `LinqDotnet10Challenges.sln`.
+- wszystkie projekty SDK-style: `net10.0`
+- `global.json` pinuje SDK 10.x
+- `Directory.Build.props` + `Directory.Packages.props` (Central Package Management)
+- materiały laboratoryjne i polecenia `dotnet new` wskazują `net10.0`
+- ASP.NET Core: `Microsoft.AspNetCore.Mvc.Testing` 10.0.10
+- Swagger: `Swashbuckle.AspNetCore` 10.2.3
+- solution laboratoriów semestru 4: `LinqDotnet10Challenges.sln`
 
 ## Wymagania
 
-Do kompilacji wymagany jest zainstalowany .NET 10 SDK.
+.NET 10 SDK: <https://dotnet.microsoft.com/download>
 
-## Weryfikacja lokalna
+## Weryfikacja
 
-```powershell
+```bash
 dotnet --info
-dotnet restore
-dotnet build .\WWSI_CSharp_NET10.sln
-dotnet test .\WWSI_CSharp_NET10.sln --no-build
+dotnet restore WWSI_CSharp_NET10.sln
+dotnet build WWSI_CSharp_NET10.sln
+dotnet test WWSI_CSharp_NET10.sln --no-build
 ```
 
-Dla osobnej solution laboratoriów semestru 4:
+Laboratoria semestru 4:
 
-```powershell
-dotnet restore .\semestr4\labs\LinqDotnet10Challenges.sln
-dotnet build .\semestr4\labs\LinqDotnet10Challenges.sln
-dotnet test .\semestr4\labs\LinqDotnet10Challenges.sln --no-build
+```bash
+dotnet test semestr4/labs/LinqDotnet10Challenges.sln
 ```
 
-## Solution główna
+## Solution
 
-Dodano `WWSI_CSharp_NET10.sln` obejmującą wszystkie 154 istniejące projekty. Oryginalna `WWSI_CSharp.sln` została pozostawiona jako legacy, ponieważ już w repo wejściowym wskazywała na 9 nieistniejących projektów.
+`WWSI_CSharp_NET10.sln` obejmuje wszystkie projekty w repozytorium.
+Legacy `WWSI_CSharp.sln` (martwe ścieżki) została usunięta.

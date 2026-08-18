@@ -1,4 +1,9 @@
 # Lab11 Projekt CLI
 
-- projekt CLI (kalkulator lub notatnik)
-- plan klas i testów
+Mini-projekt zaliczeniowy: kalkulator / książka adresowa CLI.
+
+- warstwy: parser poleceń → logika → I/O
+- testy bez konsoli
+- `--help`, kody wyjścia 0/1/2
+
+Szczegóły: [Lab11_Projekt_CLI_Szczegolowe.md](Lab11_Projekt_CLI_Szczegolowe.md)

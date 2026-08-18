@@ -11,7 +11,7 @@ public interface IRepository<T>
 
 public class SimpleRepo : IRepository<int>
 {
-    public int? Get(int id) => id;
+    public int Get(int id) => id;
     public IEnumerable<int> All() => new[] { 1, 2, 3 };
     public void Add(int entity) { /* ... */ }
     public void BulkInsert(IEnumerable<int> items) => throw new NotImplementedException(); // ISP issue
