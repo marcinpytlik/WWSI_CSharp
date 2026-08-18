@@ -18,7 +18,7 @@ public static class Program
 {
     public static int Main()
     {
-        Console.WriteLine($"DEMO49={FromNestedBuildProps} title={AssemblyTitle()}");
+        Console.WriteLine($"DEMO49={BuildFlags.FromNestedBuildProps} title={BuildFlags.AssemblyTitle()}");
         return 0;
     }
 }
