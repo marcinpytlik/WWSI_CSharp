@@ -1,0 +1,36 @@
+# Trzy obrazy: SQL Server, API, YARP gateway. Hasła tylko na salę / Docker.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Demo41_StrongPass!"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 25s
+
+  api:
+    image: demo41-api:local
+    build:
+      context: ../..
+      dockerfile: demonstracje/41_YarpGateway/docker/Api.Dockerfile
+    environment:
+      ConnectionStrings__App: "Server=sqlserver,1433;User Id=sa;Password=Demo41_StrongPass!;TrustServerCertificate=True;Initial Catalog=Demo41Notes"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  gateway:
+    image: demo41-gateway:local
+    build:
+      context: ../..
+      dockerfile: demonstracje/41_YarpGateway/docker/Gateway.Dockerfile
+    ports:
+      - "5341:8080"
+    depends_on:
+      - api

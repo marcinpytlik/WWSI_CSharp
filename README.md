@@ -51,9 +51,9 @@ Jedno źródło prawdy: [PUNKTACJA.md](PUNKTACJA.md).
 - [GRASP](ProjektowanieOprogramowania/GRASP/README.md)
 - [GoF (24 wzorce)](ProjektowanieOprogramowania/GoF/README.md)
 
-## Demonstracje (32 mini-projektów)
+## Demonstracje (47 mini-projektów)
 
-Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejek, Hangfire i EF Core: [demonstracje/README.md](demonstracje/README.md).
+Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejek, Hangfire, Redis, MinIO, YARP i EF Core: [demonstracje/README.md](demonstracje/README.md).
 
 ```bash
 dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
@@ -61,6 +61,7 @@ dotnet run --project demonstracje/07_NotesApi/src
 dotnet run --project demonstracje/13_FiguryPolimorfizm/src
 # API + Hangfire + SQL Server (3 obrazy) — demonstracje/32_HangfireApiSql/README.md
 cd demonstracje/32_HangfireApiSql && docker compose up --build
+# Redis / MinIO / YARP / Seq / SignalR — demonstracje/39_RedisCacheSql … 43_SignalRApiSql
 ```
 
 ## Solution

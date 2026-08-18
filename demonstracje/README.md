@@ -1,4 +1,4 @@
-# Demonstracje — 32 mini-projektów
+# Demonstracje — 47 mini-projektów
 
 Gotowe, małe aplikacje do pokazania na zajęciach (5–15 min każde).
 Każda ma `src` + testy xUnit. Nie zastępują laboratoriów — to **żywe przykłady**
@@ -44,5 +44,20 @@ dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 | 30 | [Health checks](30_HealthChecks/) | 5 | `/health` 200 vs 503 |
 | 31 | [SQL read/write](31_ReadWriteSql/) | 5 | dwa konta: zapis vs tylko SELECT |
 | 32 | [API + Hangfire + SQL](32_HangfireApiSql/) | 5 | trzy obrazy Docker: API, worker Hangfire, SQL Server |
+| 33 | [JWT role 403](33_JwtRole403/) | 5 | `ClaimTypes.Role`, User vs Admin, 401/403 |
+| 34 | [Paginacja i filtr](34_PaginacjaFiltr/) | 5 | `skip`/`take`/`q`, `total` w odpowiedzi |
+| 35 | [Relacje n–n](35_RelacjeNn/) | 5 | `Student`–`Course`, `Include` |
+| 36 | [Optimistic concurrency](36_OptimisticConcurrency/) | 5 | token wersji, drugi PUT → 409 |
+| 37 | [Soft delete](37_SoftDelete/) | 5 | `IsDeleted` + `HasQueryFilter` |
+| 38 | [FluentValidation](38_FluentValidation/) | 5 | ten sam produkt co 20, inny walidator |
+| 39 | [Redis + SQL](39_RedisCacheSql/) | 5 | trzy obrazy: API, Redis, SQL Server |
+| 40 | [MinIO upload + SQL](40_MinioUploadSql/) | 5 | trzy obrazy: API, MinIO, SQL Server |
+| 41 | [YARP gateway](41_YarpGateway/) | 5 | trzy obrazy: gateway, API, SQL Server |
+| 42 | [Seq + SQL](42_SeqLogging/) | 5 | trzy obrazy: API, Seq, SQL Server |
+| 43 | [SignalR + SQL](43_SignalRApiSql/) | 5 | trzy obrazy: API, nginx, SQL Server |
+| 44 | [Result](44_ResultType/) | 4–5 | `Ok`/`Fail` zamiast wyjątku na 400 |
+| 45 | [CQRS lite](45_CqrsLite/) | 4–5 | osobny command i query handler |
+| 46 | [Adapter XML](46_AdapterXml/) | 4–5 | legacy XML za `IQuoteClient` |
+| 47 | [Chain of Responsibility](47_ChainOfResponsibility/) | 4–5 | puste → format → limit |
 
-Kolejność na zajęciach: **01–02, 13–15** (sem. 3), **03–06, 16–19** (sem. 4), **07–09, 20–23, 25, 30** (sem. 5), **10, 26–28** (wzorce), **11–12, 24, 29, 31–32** na zajęcia z Dockerem / infrastrukturą.
+Kolejność na zajęciach: **01–02, 13–15** (sem. 3), **03–06, 16–19** (sem. 4), **07–09, 20–23, 25, 30, 33–38** (sem. 5), **10, 26–28, 44–47** (wzorce), **11–12, 24, 29, 31–32, 39–43** na zajęcia z Dockerem / infrastrukturą.
