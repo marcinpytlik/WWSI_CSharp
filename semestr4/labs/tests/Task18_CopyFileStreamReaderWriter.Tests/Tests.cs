@@ -13,7 +13,8 @@ public sealed class FileCopierTests
         File.WriteAllText(src, "a\nb\n");
         Task18_CopyFileStreamReaderWriter.FileCopier.CopyTextFile(src, dst);
 
-        Assert.Equal(File.ReadAllText(src), File.ReadAllText(dst));
+        // StreamWriter uses Environment.NewLine, so compare lines rather than raw bytes.
+        Assert.Equal(File.ReadAllLines(src), File.ReadAllLines(dst));
 
         File.Delete(src);
         File.Delete(dst);

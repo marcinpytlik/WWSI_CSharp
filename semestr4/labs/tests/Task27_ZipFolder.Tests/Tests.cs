@@ -18,9 +18,11 @@ public sealed class FolderZipperTests
 
         Assert.True(File.Exists(zip));
 
-        using var archive = ZipFile.OpenRead(zip);
-        Assert.NotNull(archive.GetEntry("a.txt"));
-        Assert.NotNull(archive.GetEntry("b.txt"));
+        using (var archive = ZipFile.OpenRead(zip))
+        {
+            Assert.NotNull(archive.GetEntry("a.txt"));
+            Assert.NotNull(archive.GetEntry("b.txt"));
+        }
 
         Directory.Delete(dir, true);
         File.Delete(zip);
