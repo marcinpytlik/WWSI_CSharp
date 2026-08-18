@@ -1,3 +1,5 @@
-# Lab11 Projekt Api2
+# Lab11 Projekt API (2/2)
 
-- Users+Tasks cz.2 (auth, raporty)
+JWT + Tasks użytkownika + testy integracyjne. Prezentacja.
+
+Szczegóły: [Lab11_Projekt_Api2_Szczegolowe.md](Lab11_Projekt_Api2_Szczegolowe.md)

@@ -1,5 +1,8 @@
-# Lab01 MinimalAPI
+# Lab01 Minimal API
 
-- `app.MapGet`
-- health check
-- konfiguracja Kestrel
+- `WebApplication.CreateBuilder`, `MapGet`
+- `GET /health` (status + utc)
+- Kestrel: URL w `launchSettings` / `--urls`
+
+Kod: `Lab01_MinimalAPI/`  
+Szczegóły: [Lab01_MinimalAPI_Szczegolowe.md](Lab01_MinimalAPI_Szczegolowe.md)

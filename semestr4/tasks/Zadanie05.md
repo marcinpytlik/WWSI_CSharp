@@ -1,5 +1,13 @@
-# Zadanie 05 – opis (Semestr 4)
+# Zadanie 05 – Fabryka + strategia
 
-- Treść zadania 5
-- Kryteria
-- Punktacja
+**Termin:** tydzień 9
+
+## Treść
+
+Wycena przesyłki: strategie `Standard`, `Express`, `Pickup`.
+Fabryka po enum/string. Test kwot (nie tylko „nie rzuciło”).
+
+## Kryteria
+
+- [ ] nowa strategia bez edycji `if-else` w kliencie (OCP)
+- [ ] 4 testy kwot

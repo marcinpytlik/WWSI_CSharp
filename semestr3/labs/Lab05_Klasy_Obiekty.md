@@ -1,5 +1,7 @@
-# Lab05 Klasy Obiekty
+# Lab05 Klasy i obiekty
 
-- właściwości
-- konstruktory
-- enkapsulacja
+- pola, właściwości, konstruktory, `init`
+- `this`, `static`, rekord vs klasa
+- hermetyzacja (`private set`)
+
+Szczegóły: [Lab05_Klasy_Obiekty_Szczegolowe.md](Lab05_Klasy_Obiekty_Szczegolowe.md)

@@ -10,8 +10,11 @@ Każdy podfolder zawiera **Anti** (antyprzykład) i **Refactored** (wdrożenie z
 - 05_DIP — Dependency Inversion
 
 ## Uruchamianie
-```pwsh
-dotnet build
+
+Wymagane **.NET SDK 10.x**.
+
+```bash
 dotnet test
 ```
-Lub wejdź do konkretnego folderu i uruchom budowanie/testy tylko dla danego przykładu.
+
+Albo wejdź do konkretnego folderu (Anti / Refactored) i uruchom testy tylko dla danego przykładu.

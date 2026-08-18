@@ -1,4 +1,5 @@
-# Lab12 Powtorka
+# Lab12 Powtórka
 
-- quiz + refaktoryzacja projektu
-- wnioski i dobre praktyki
+Checklista semestru 3: typy, OOP, kolekcje, wyjątki, testy.
+
+Szczegóły: [Lab12_Powtorka_Szczegolowe.md](Lab12_Powtorka_Szczegolowe.md)

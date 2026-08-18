@@ -70,6 +70,9 @@ Desktop.ini
 *.ndf
 *.bak
 *.trn
+*.db
+*.db-shm
+*.db-wal
 
 ############################################################
 # Environment / secrets
@@ -79,6 +82,14 @@ Desktop.ini
 secrets.json
 appsettings.Local.json
 appsettings.*.local.json
+
+############################################################
+# Gradebooks with student data (templates stay in git)
+############################################################
+Gradebook/local/
+Gradebook/*.xlsx
+Gradebook_*.csv
+Gradebook_*.xlsx
 
 ############################################################
 # Node / frontend

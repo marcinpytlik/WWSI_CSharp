@@ -1,5 +1,13 @@
-# Zadanie 01 – opis (Semestr 5)
+# Zadanie 01 – Notes API in-memory
 
-- Treść zadania 1
-- Kryteria
-- Punktacja
+**Termin:** tydzień 2
+
+## Treść
+
+Minimal API: lista, get, post, delete notatek w pamięci. Kody 200/201/204/404.
+Rozszerzenie Lab01 — **nadal bez bazy i JWT**.
+
+## Kryteria
+
+- [ ] testy `WebApplicationFactory`
+- [ ] walidacja tytułu

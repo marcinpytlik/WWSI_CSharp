@@ -1,5 +1,7 @@
-# Lab02 Typy Skladnia
+# Lab02 Typy i składnia
 
-- Typy proste, konwersje
-- String interpolation
-- Operatory porównań
+- typy wartościowe vs referencyjne, `default`, nullable
+- konwersje: `TryParse`, `Convert`, rzutowanie
+- interpolacja, `nameof`, overflow `checked`
+
+Szczegóły: [Lab02_Typy_Skladnia_Szczegolowe.md](Lab02_Typy_Skladnia_Szczegolowe.md)

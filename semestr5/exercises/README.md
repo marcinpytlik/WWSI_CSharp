@@ -1,5 +1,8 @@
 # Ćwiczenia – Semestr 5
-Każdy tydzień zawiera **5 ćwiczeń o łącznej wartości 100 pkt**. Punktacja rośnie wraz z trudnością: **10, 15, 20, 25, 30 pkt**.
+
+Próg zaliczenia: **700 / 1000 pkt (70%)**. Pełne zasady: [PUNKTACJA.md](../../PUNKTACJA.md).
+
+Każdy tydzień zawiera **5 ćwiczeń o łącznej wartości 100 pkt**. Punktacja: **10, 15, 20, 25, 30 pkt**.
 Łącznie w semestrze: **1000 pkt**.
 ## Zasady punktacji
 - 10 pkt – zadanie podstawowe, sprawdzenie najważniejszej konstrukcji z tygodnia.
