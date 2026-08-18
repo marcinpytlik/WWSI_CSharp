@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option csharp_namespace = "Demo60";
+
+service Notes {
+  rpc Add (AddNoteRequest) returns (NoteReply);
+  rpc List (Empty) returns (NoteList);
+}
+
+message Empty {}
+
+message AddNoteRequest {
+  string title = 1;
+}
+
+message NoteReply {
+  int32 id = 1;
+  string title = 2;
+}
+
+message NoteList {
+  repeated NoteReply items = 1;
+}

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo54_RateLimiting</AssemblyName>
+    <RootNamespace>Demo54</RootNamespace>
+  </PropertyGroup>
+</Project>

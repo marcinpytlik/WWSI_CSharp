@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo64_TemplateMethod</AssemblyName>
+    <RootNamespace>Demo64</RootNamespace>
+  </PropertyGroup>
+</Project>

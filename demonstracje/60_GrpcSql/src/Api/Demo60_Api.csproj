@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo60_Api</AssemblyName>
+    <RootNamespace>Demo60.Api</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Demo60_Shared.csproj" />
+  </ItemGroup>
+</Project>

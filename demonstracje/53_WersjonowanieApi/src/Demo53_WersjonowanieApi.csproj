@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo53_WersjonowanieApi</AssemblyName>
+    <RootNamespace>Demo53</RootNamespace>
+  </PropertyGroup>
+</Project>

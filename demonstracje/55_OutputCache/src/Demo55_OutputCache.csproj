@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo55_OutputCache</AssemblyName>
+    <RootNamespace>Demo55</RootNamespace>
+  </PropertyGroup>
+</Project>

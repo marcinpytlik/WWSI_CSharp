@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo62_MediatorLite</AssemblyName>
+    <RootNamespace>Demo62</RootNamespace>
+  </PropertyGroup>
+</Project>

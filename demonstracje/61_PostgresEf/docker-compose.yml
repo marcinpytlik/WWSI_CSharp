@@ -1,0 +1,35 @@
+# Trzy obrazy: Postgres, API, Adminer. Hasła tylko na salę / Docker.
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: demo61
+      POSTGRES_PASSWORD: Demo61_StrongPass!
+      POSTGRES_DB: demo61
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo61 -d demo61"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: demo61-api:local
+    build:
+      context: ../..
+      dockerfile: demonstracje/61_PostgresEf/docker/Api.Dockerfile
+    ports:
+      - "5362:8080"
+    environment:
+      ConnectionStrings__App: "Host=postgres;Port=5432;Username=demo61;Password=Demo61_StrongPass!;Database=demo61"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  adminer:
+    image: adminer:4
+    ports:
+      - "5363:8080"
+    depends_on:
+      - postgres

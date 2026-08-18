@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Demo60_GrpcSql.Tests</AssemblyName>
+    <RootNamespace>Demo60.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\Api\Demo60_Api.csproj" />
+    <ProjectReference Include="..\src\Grpc\Demo60_Grpc.csproj" />
+    <ProjectReference Include="..\src\Shared\Demo60_Shared.csproj" />
+  </ItemGroup>
+</Project>
