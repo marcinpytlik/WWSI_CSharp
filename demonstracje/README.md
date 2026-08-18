@@ -1,4 +1,4 @@
-# Demonstracje — 31 mini-projektów
+# Demonstracje — 32 mini-projektów
 
 Gotowe, małe aplikacje do pokazania na zajęciach (5–15 min każde).
 Każda ma `src` + testy xUnit. Nie zastępują laboratoriów — to **żywe przykłady**
@@ -43,5 +43,6 @@ dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 | 29 | [Cache w pamięci](29_CachePamiec/) | 5 | `IMemoryCache` (Redis opcjonalnie) |
 | 30 | [Health checks](30_HealthChecks/) | 5 | `/health` 200 vs 503 |
 | 31 | [SQL read/write](31_ReadWriteSql/) | 5 | dwa konta: zapis vs tylko SELECT |
+| 32 | [API + Hangfire + SQL](32_HangfireApiSql/) | 5 | trzy obrazy Docker: API, worker Hangfire, SQL Server |
 
-Kolejność na zajęciach: **01–02, 13–15** (sem. 3), **03–06, 16–19** (sem. 4), **07–09, 20–23, 25, 30** (sem. 5), **10, 26–28** (wzorce), **11–12, 24, 29, 31** na zajęcia z Dockerem / infrastrukturą.
+Kolejność na zajęciach: **01–02, 13–15** (sem. 3), **03–06, 16–19** (sem. 4), **07–09, 20–23, 25, 30** (sem. 5), **10, 26–28** (wzorce), **11–12, 24, 29, 31–32** na zajęcia z Dockerem / infrastrukturą.
