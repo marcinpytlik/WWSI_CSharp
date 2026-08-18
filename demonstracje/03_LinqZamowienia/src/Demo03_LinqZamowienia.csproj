@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo03_LinqZamowienia</AssemblyName>
+    <RootNamespace>Demo03</RootNamespace>
+  </PropertyGroup>
+</Project>

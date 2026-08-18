@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo10_WycenaStrategia</AssemblyName>
+    <RootNamespace>Demo10</RootNamespace>
+  </PropertyGroup>
+</Project>

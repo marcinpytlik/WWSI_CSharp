@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo04_CsvDoJson</AssemblyName>
+    <RootNamespace>Demo04</RootNamespace>
+  </PropertyGroup>
+</Project>
