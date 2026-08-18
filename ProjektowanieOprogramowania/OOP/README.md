@@ -1,4 +1,4 @@
-# OOP w C# / .NET 9 — repo-ready
+# OOP w C# / .NET 10 — repo-ready
 
 10 mini-projektów z kodem i testami xUnit pod VS Code. Każdy folder: `/src` + `/tests` + `.vscode`.
 

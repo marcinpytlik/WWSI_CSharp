@@ -1,4 +1,4 @@
-# GRASP — ściąga praktyczna (.NET 9 / C#)
+# GRASP — ściąga praktyczna (.NET 10 / C#)
 
 **GRASP (General Responsibility Assignment Software Patterns)** — zestaw zasad nadawania odpowiedzialności klasom/obiektom. Celem jest kod **spójny, luźno powiązany, testowalny i odporny na zmiany**.
 

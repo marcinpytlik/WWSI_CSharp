@@ -13,3 +13,8 @@
 10. Testy jednostkowe (xUnit)
 11. Projekt mini (CLI)
 12. Powtórka i podsumowanie
+
+
+## Ćwiczenia tygodniowe
+
+- [Ćwiczenia – 10 tygodni × 5 zadań, 1000 pkt](exercises/README.md)

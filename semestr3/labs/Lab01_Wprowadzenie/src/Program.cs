@@ -76,7 +76,7 @@ namespace Lab01
         }
 
         public const string HelpShort = "Usage: dotnet run --project src -- [greet [name] | add <a> <b> | to-json | --help]";
-        public static readonly string HelpText = @"Lab01 - Wprowadzenie (net8.0)
+        public static readonly string HelpText = @"Lab01 - Wprowadzenie (net10.0)
 
 Usage:
   dotnet run --project src -- greet [name]

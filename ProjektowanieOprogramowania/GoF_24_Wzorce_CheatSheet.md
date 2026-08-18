@@ -1,4 +1,4 @@
-# 24 wzorce projektowe (Gang of Four) — .NET 9 / C# — ściąga praktyczna
+# 24 wzorce projektowe (Gang of Four) — .NET 10 / C# — ściąga praktyczna
 
 Podział: **Kreacyjne**, **Strukturalne**, **Czynnościowe**. Każdy wzorzec: krótki opis, kiedy użyć, mikro‑przykład w C# (minimalny, ale kompilowalny po uzupełnieniu przestrzeni nazw).
 
@@ -265,7 +265,7 @@ class NullLogger : ILogger { public void Log(string msg) { } }
 
 ---
 
-## Szybki mapping na .NET 9 praktykę
+## Szybki mapping na .NET 10 praktykę
 - **DI/IoC:** Abstract Factory / Strategy naturalnie przez `AddTransient/AddSingleton` i `IOptions`.
 - **Middleware:** wzorzec **Chain of Responsibility**.
 - **Minimal APIs:** **Command** (endpoint‑handlers), **Strategy** (polityki), **Decorator** (owijanie serwisów).

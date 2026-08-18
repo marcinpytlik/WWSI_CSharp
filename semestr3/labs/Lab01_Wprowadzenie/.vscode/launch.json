@@ -5,7 +5,7 @@
       "name": ".NET Launch (src)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/bin/Debug/net8.0/src.dll",
+      "program": "${workspaceFolder}/src/bin/Debug/net10.0/src.dll",
       "preLaunchTask": "build",
       "cwd": "${workspaceFolder}/src",
       "console": "integratedTerminal",

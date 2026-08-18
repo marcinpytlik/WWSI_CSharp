@@ -7,8 +7,8 @@
 
 ## Cel
 Po tym labie będziesz umieć:
-- Uruchamiać projekty .NET 8 z linii poleceń (`dotnet`).
-- Stosować kluczowe elementy tematu: Instalacja .NET 8, `dotnet new console`, Struktura projektu, Pierwszy build i run.
+- Uruchamiać projekty .NET 10 z linii poleceń (`dotnet`).
+- Stosować kluczowe elementy tematu: Instalacja .NET 10, `dotnet new console`, Struktura projektu, Pierwszy build i run.
 - Pisać czytelny kod zgodnie z konwencjami i mieć automatyczne testy tam, gdzie to ma sens.
 
 ## Repo i struktura katalogów
@@ -30,8 +30,8 @@ Po tym labie będziesz umieć:
    ```
 2. Stwórz projekt konsolowy i testy xUnit:  
    ```pwsh
-   dotnet new console -n src -f net8.0
-   dotnet new xunit -n tests -f net8.0
+   dotnet new console -n src -f net10.0
+   dotnet new xunit -n tests -f net10.0
    dotnet sln new Lab01_Wprowadzenie.sln
    dotnet sln add src/src.csproj tests/tests.csproj
    dotnet add tests/tests.csproj reference src/src.csproj
@@ -84,7 +84,7 @@ Utwórz plik `.vscode/tasks.json`:
       "name": ".NET Launch (src)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/bin/Debug/net8.0/src.dll",
+      "program": "${workspaceFolder}/src/bin/Debug/net10.0/src.dll",
       "preLaunchTask": "build",
       "cwd": "${workspaceFolder}/src"
     }
@@ -96,7 +96,7 @@ Utwórz plik `.vscode/tasks.json`:
 Na bazie skrótu z pliku wejściowego wykonaj następujące kroki (wzorowane na punktach wstępnych):
 # Lab01 Wprowadzenie
 
-- Instalacja .NET 8
+- Instalacja .NET 10
 - `dotnet new console`
 - Struktura projektu
 - Pierwszy build i run

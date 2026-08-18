@@ -32,8 +32,8 @@
 ## Przygotowanie (10 min)
 ```pwsh
 mkdir Lab09_Testy_Integracyjne; cd Lab09_Testy_Integracyjne
-dotnet new webapi -n Api --use-minimal-apis -f net9.0
-dotnet new xunit -n Api.Tests -f net9.0
+dotnet new webapi -n Api --use-minimal-apis -f net10.0
+dotnet new xunit -n Api.Tests -f net10.0
 dotnet sln new Lab09_Testy_Integracyjne.sln
 dotnet sln add src/Api/Api.csproj tests/Api.Tests/Api.Tests.csproj
 dotnet add tests/Api.Tests/Api.Tests.csproj reference src/Api/Api.csproj
@@ -89,7 +89,7 @@ dotnet add tests/Api.Tests/Api.Tests.csproj package Microsoft.AspNetCore.Mvc.Tes
       "name": "Launch API (watch)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/src/Api/bin/Debug/net9.0/Api.dll",
+      "program": "${workspaceFolder}/src/Api/bin/Debug/net10.0/Api.dll",
       "preLaunchTask": "build",
       "cwd": "${workspaceFolder}/src/Api",
       "environment": [ { "name": "ASPNETCORE_ENVIRONMENT", "value": "Development" } ]

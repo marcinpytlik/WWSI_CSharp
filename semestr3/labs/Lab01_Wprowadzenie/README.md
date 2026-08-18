@@ -1,4 +1,4 @@
-# Lab01 - Wprowadzenie (net8.0)
+# Lab01 - Wprowadzenie (net10.0)
 
 Czas: 90-120 min | Poziom: poczatkujacy -> sredniozaawansowany
 

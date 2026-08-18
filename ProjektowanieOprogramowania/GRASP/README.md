@@ -1,4 +1,4 @@
-# GRASP — mini repo (.NET 9 / Minimal API)
+# GRASP — mini repo (.NET 10 / Minimal API)
 
 Dwa projekty ilustrujące refaktoryzację zgodnie z GRASP (Information Expert, Controller, Low Coupling, High Cohesion, Polymorphism, Pure Fabrication, Indirection, Protected Variations).
 

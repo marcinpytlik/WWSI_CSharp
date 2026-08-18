@@ -1,4 +1,4 @@
-# GoF — 24 wzorce projektowe w .NET 9 (C#)
+# GoF — 24 wzorce projektowe w .NET 10 (C#)
 
 Repozytorium zawiera **24** foldery ze wzorcami (23 oryginalne GoF + bonus *Null Object*). Każdy folder ma projekt `src` oraz testy `tests` (xUnit).
 

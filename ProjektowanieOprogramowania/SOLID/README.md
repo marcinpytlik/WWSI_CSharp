@@ -1,4 +1,4 @@
-# SOLID — .NET 9 / C# (repo-ready)
+# SOLID — .NET 10 / C# (repo-ready)
 
 Każdy podfolder zawiera **Anti** (antyprzykład) i **Refactored** (wdrożenie zgodne z SOLID) + testy xUnit.
 
