@@ -27,7 +27,7 @@ public class PaginationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task FilterQ_CountsOnlyMatches()
     {
-        var page = await _client.GetFromJsonAsync<PageDto>("/api/v1/products?q=note&skip=0&take=1");
+        var page = await _client.GetFromJsonAsync<PageDto>("/api/v1/products?q=notes&skip=0&take=1");
         Assert.Equal(2, page!.Total);
         Assert.Single(page.Items);
         Assert.Equal("Ada notes", page.Items[0].Name);

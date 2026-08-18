@@ -54,7 +54,7 @@ public class CacheTests : IClassFixture<IsolatedApiFactory>
 
         var list = await _client.GetFromJsonAsync<List<Product>>("/api/v1/products");
         Assert.Single(list!);
-        Assert.Equal("Cached notes", list[0].Name);
+        Assert.Equal("Cached notes", list![0].Name);
     }
 
     [Fact]

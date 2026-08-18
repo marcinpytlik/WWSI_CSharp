@@ -17,7 +17,7 @@ public readonly record struct Result<T>
     public static Result<T> Fail(string error) => new(false, default, error);
 }
 
-public sealed class Account
+public sealed record Account
 {
     public int Id { get; init; }
     public decimal Balance { get; init; }
