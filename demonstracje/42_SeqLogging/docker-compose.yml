@@ -1,0 +1,38 @@
+# Trzy obrazy: SQL Server, Seq, API. Hasła tylko na salę / Docker.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Demo42_StrongPass!"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 25s
+
+  seq:
+    image: datalust/seq:latest
+    ports:
+      - "5344:80"
+    environment:
+      ACCEPT_EULA: "Y"
+
+  api:
+    image: demo42-api:local
+    build:
+      context: ../..
+      dockerfile: demonstracje/42_SeqLogging/docker/Api.Dockerfile
+    ports:
+      - "5343:8080"
+    environment:
+      ConnectionStrings__App: "Server=sqlserver,1433;User Id=sa;Password=Demo42_StrongPass!;TrustServerCertificate=True;Initial Catalog=Demo42Events"
+      Seq__Url: "http://seq:80"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      seq:
+        condition: service_started

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo46_AdapterXml</AssemblyName>
+    <RootNamespace>Demo46</RootNamespace>
+  </PropertyGroup>
+</Project>

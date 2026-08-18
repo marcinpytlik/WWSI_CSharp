@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo47_ChainOfResponsibility</AssemblyName>
+    <RootNamespace>Demo47</RootNamespace>
+  </PropertyGroup>
+</Project>

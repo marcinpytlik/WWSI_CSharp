@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo44_ResultType</AssemblyName>
+    <RootNamespace>Demo44</RootNamespace>
+  </PropertyGroup>
+</Project>

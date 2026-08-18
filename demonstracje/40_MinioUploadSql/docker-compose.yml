@@ -1,0 +1,44 @@
+# Trzy obrazy: SQL Server, MinIO, API. Hasła tylko na salę / Docker.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Demo40_StrongPass!"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 25s
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: demo40access
+      MINIO_ROOT_PASSWORD: demo40secret1
+
+  api:
+    image: demo40-api:local
+    build:
+      context: ../..
+      dockerfile: demonstracje/40_MinioUploadSql/docker/Api.Dockerfile
+    ports:
+      - "5340:8080"
+    environment:
+      ConnectionStrings__App: "Server=sqlserver,1433;User Id=sa;Password=Demo40_StrongPass!;TrustServerCertificate=True;Initial Catalog=Demo40Files"
+      Minio__Endpoint: "minio:9000"
+      Minio__AccessKey: demo40access
+      Minio__SecretKey: demo40secret1
+      Minio__Bucket: demo40
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      minio:
+        condition: service_started

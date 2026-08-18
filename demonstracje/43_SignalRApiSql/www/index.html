@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Demo 43 — SignalR</title>
+  <style>
+    body { font-family: sans-serif; max-width: 40rem; margin: 2rem auto; }
+    #log { border: 1px solid #ccc; min-height: 8rem; padding: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>Chat (SignalR)</h1>
+  <p>API: <code id="api"></code></p>
+  <div id="log"></div>
+  <p>
+    <input id="msg" placeholder="wiadomość" />
+    <button id="send">Wyślij</button>
+  </p>
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+  <script>
+    const api = "http://localhost:5345";
+    document.getElementById("api").textContent = api;
+    const log = document.getElementById("log");
+    const connection = new signalR.HubConnectionBuilder().withUrl(api + "/hubs/chat").build();
+    connection.on("Receive", (id, text) => {
+      const p = document.createElement("div");
+      p.textContent = id + ": " + text;
+      log.appendChild(p);
+    });
+    connection.start().catch(err => log.textContent = err);
+    document.getElementById("send").onclick = () => {
+      connection.invoke("Send", document.getElementById("msg").value);
+    };
+  </script>
+</body>
+</html>

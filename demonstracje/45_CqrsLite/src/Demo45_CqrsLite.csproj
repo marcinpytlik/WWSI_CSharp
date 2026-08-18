@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo45_CqrsLite</AssemblyName>
+    <RootNamespace>Demo45</RootNamespace>
+  </PropertyGroup>
+</Project>
