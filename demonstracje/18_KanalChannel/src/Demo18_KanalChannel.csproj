@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo18_KanalChannel</AssemblyName>
+    <RootNamespace>Demo18</RootNamespace>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo25_IdempotencyKey</AssemblyName>
+    <RootNamespace>Demo25</RootNamespace>
+  </PropertyGroup>
+</Project>

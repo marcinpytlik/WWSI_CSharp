@@ -51,16 +51,15 @@ Jedno źródło prawdy: [PUNKTACJA.md](PUNKTACJA.md).
 - [GRASP](ProjektowanieOprogramowania/GRASP/README.md)
 - [GoF (24 wzorce)](ProjektowanieOprogramowania/GoF/README.md)
 
-## Demonstracje (12 mini-projektów)
+## Demonstracje (31 mini-projektów)
 
-Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejki i EF Core: [demonstracje/README.md](demonstracje/README.md).
+Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejek i EF Core: [demonstracje/README.md](demonstracje/README.md).
 
 ```bash
 dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 dotnet run --project demonstracje/07_NotesApi/src
-# RabbitMQ + SQL Server (wymaga docker compose — patrz demonstracje/11_KolejkaRabbitSql/README.md)
-dotnet run --project demonstracje/11_KolejkaRabbitSql/src/Consumer
-# EF Core SQL Server, Code First / Database First, dwa konta (least privilege)
+dotnet run --project demonstracje/13_FiguryPolimorfizm/src
+# RabbitMQ + SQL Server — demonstracje/11_KolejkaRabbitSql/README.md
 dotnet run --project demonstracje/12_EfCoreSqlLeastPrivilege/src/CodeFirst -- deploy
 ```
 

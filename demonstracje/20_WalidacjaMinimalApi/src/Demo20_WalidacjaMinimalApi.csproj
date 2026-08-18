@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>Demo20_WalidacjaMinimalApi</AssemblyName>
+    <RootNamespace>Demo20</RootNamespace>
+  </PropertyGroup>
+</Project>

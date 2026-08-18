@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo28_ObserverZdarzenia</AssemblyName>
+    <RootNamespace>Demo28</RootNamespace>
+  </PropertyGroup>
+</Project>
