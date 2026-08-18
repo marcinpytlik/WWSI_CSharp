@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo06_TodoWarstwy</AssemblyName>
+    <RootNamespace>Demo06</RootNamespace>
+  </PropertyGroup>
+</Project>
