@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo65_NullObject</AssemblyName>
+    <RootNamespace>Demo65</RootNamespace>
+  </PropertyGroup>
+</Project>

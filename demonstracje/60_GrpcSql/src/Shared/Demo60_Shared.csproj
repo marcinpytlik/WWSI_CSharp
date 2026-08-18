@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Demo60_Shared</AssemblyName>
+    <RootNamespace>Demo60</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <Protobuf Include="..\..\proto\notes.proto" GrpcServices="Both" />
+  </ItemGroup>
+</Project>

@@ -1,4 +1,4 @@
-# Demonstracje — 47 mini-projektów
+# Demonstracje — 65 mini-projektów
 
 Gotowe, małe aplikacje do pokazania na zajęciach (5–15 min każde).
 Każda ma `src` + testy xUnit. Nie zastępują laboratoriów — to **żywe przykłady**
@@ -59,5 +59,23 @@ dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 | 45 | [CQRS lite](45_CqrsLite/) | 4–5 | osobny command i query handler |
 | 46 | [Adapter XML](46_AdapterXml/) | 4–5 | legacy XML za `IQuoteClient` |
 | 47 | [Chain of Responsibility](47_ChainOfResponsibility/) | 4–5 | puste → format → limit |
+| 48 | [Central Package Management](48_CpmPakiety/) | 4–5 | jedna wersja pakietu, dwa projekty bez `Version=` |
+| 49 | [`Directory.Build.props` + SDK](49_DirectoryBuildProps/) | 4–5 | zagnieżdżone propsy, `global.json` |
+| 50 | [Options pattern](50_OptionsPattern/) | 5 | `IOptions`, `ValidateOnStart` |
+| 51 | [`IHttpClientFactory`](51_HttpClientFactory/) | 4–5 | named client, BaseAddress, timeout |
+| 52 | [`TimeProvider`](52_TimeProvider/) | 4 | `FakeTimeProvider` bez Moq |
+| 53 | [Wersjonowanie API](53_WersjonowanieApi/) | 5 | `/api/v1` vs `/api/v2` |
+| 54 | [Rate limiting](54_RateLimiting/) | 5 | fixed window, 429 |
+| 55 | [Output cache](55_OutputCache/) | 5 | drugi GET bez ponownego liczenia |
+| 56 | [OpenAPI / Swagger](56_OpenApiSwagger/) | 5 | `/openapi/v1.json` + Swagger UI |
+| 57 | [Transakcja EF](57_EfTransakcja/) | 5 | rollback po wyjątku |
+| 58 | [`AsNoTracking`](58_AsNoTracking/) | 5 | tracking vs no-tracking przy SaveChanges |
+| 59 | [OpenTelemetry + SQL](59_OpenTelemetrySql/) | 5 | trzy obrazy: API, Jaeger, SQL Server |
+| 60 | [gRPC + SQL](60_GrpcSql/) | 5 | trzy obrazy: gRPC, HTTP API, SQL Server |
+| 61 | [EF + Postgres](61_PostgresEf/) | 5 | trzy obrazy: API, Postgres, Adminer |
+| 62 | [Mediator lite](62_MediatorLite/) | 4–5 | `IMediator.Send` (krok po 45) |
+| 63 | [Specification](63_Specification/) | 4–5 | `ISpecification<T>` na liście zamówień |
+| 64 | [Template Method](64_TemplateMethod/) | 4–5 | import CSV/JSON, wspólna walidacja |
+| 65 | [Null Object](65_NullObject/) | 3–4 | `NoDiscount` zamiast `null` |
 
-Kolejność na zajęciach: **01–02, 13–15** (sem. 3), **03–06, 16–19** (sem. 4), **07–09, 20–23, 25, 30, 33–38** (sem. 5), **10, 26–28, 44–47** (wzorce), **11–12, 24, 29, 31–32, 39–43** na zajęcia z Dockerem / infrastrukturą.
+Kolejność na zajęciach: **01–02, 13–15, 65** (sem. 3), **03–06, 16–19, 48–49, 51–52** (sem. 4), **07–09, 20–23, 25, 30, 33–38, 50, 53–58** (sem. 5), **10, 26–28, 44–47, 62–64** (wzorce), **11–12, 24, 29, 31–32, 39–43, 59–61** na zajęcia z Dockerem / infrastrukturą.

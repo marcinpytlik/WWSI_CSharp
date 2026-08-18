@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo63_Specification</AssemblyName>
+    <RootNamespace>Demo63</RootNamespace>
+  </PropertyGroup>
+</Project>

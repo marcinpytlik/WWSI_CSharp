@@ -51,9 +51,9 @@ Jedno źródło prawdy: [PUNKTACJA.md](PUNKTACJA.md).
 - [GRASP](ProjektowanieOprogramowania/GRASP/README.md)
 - [GoF (24 wzorce)](ProjektowanieOprogramowania/GoF/README.md)
 
-## Demonstracje (47 mini-projektów)
+## Demonstracje (65 mini-projektów)
 
-Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejek, Hangfire, Redis, MinIO, YARP i EF Core: [demonstracje/README.md](demonstracje/README.md).
+Gotowe przykłady do pokazania na sali, od CLI do JWT, kolejek, Hangfire, Redis, MinIO, YARP, gRPC i EF Core: [demonstracje/README.md](demonstracje/README.md).
 
 ```bash
 dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3

@@ -1,0 +1,7 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);DEMO49</DefineConstants>
+    <AssemblyTitle>WWSI Demo49</AssemblyTitle>
+  </PropertyGroup>
+</Project>
