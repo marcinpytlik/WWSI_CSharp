@@ -1,0 +1,29 @@
+# Lokalne zależności demonstracji (nie używać tych haseł poza Dockerem na sali).
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Demo12_StrongPass!"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 25s
+
+  init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Demo12_StrongPass!"
+      MSSQL_HOST: sqlserver
+    volumes:
+      - ./sql:/sql:ro
+    entrypoint: ["/bin/bash", "/sql/init.sh"]
+    restart: "no"
