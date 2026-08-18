@@ -1,11 +1,11 @@
-# Demonstracje — 10 mini-projektów
+# Demonstracje — 11 mini-projektów
 
 Gotowe, małe aplikacje do pokazania na zajęciach (5–15 min każde).
 Każda ma `src` + testy xUnit. Nie zastępują laboratoriów — to **żywe przykłady**
 ścieżki semestr 3 → 5.
 
 ```bash
-dotnet test WWSI_CSharp_NET10.sln --filter "FullyQualifiedName~Demo0"
+dotnet test WWSI_CSharp_NET10.sln --filter "FullyQualifiedName~Demo"
 # albo jeden projekt:
 dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 ```
@@ -22,5 +22,6 @@ dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 | 08 | [Biblioteka EF](08_BibliotekaEf/) | 5 | EF Core + SQLite |
 | 09 | [JWT mini](09_JwtMini/) | 5 | login + chroniony `/me` |
 | 10 | [Wycena (strategia)](10_WycenaStrategia/) | 4–5 | Strategy + Factory |
+| 11 | [Kolejka Rabbit + SQL Server](11_KolejkaRabbitSql/) | 5 | RabbitMQ, worker, EF Core SQL Server |
 
-Kolejność na zajęciach: **01–02** (tydzień 4–5 sem. 3), **03–06** (sem. 4), **07–09** (sem. 5), **10** jako most do GoF/GRASP.
+Kolejność na zajęciach: **01–02** (tydzień 4–5 sem. 3), **03–06** (sem. 4), **07–09** (sem. 5), **10** jako most do GoF/GRASP, **11** na osobne zajęcia (Docker: RabbitMQ + SQL Server).

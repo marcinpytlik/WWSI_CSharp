@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Demo11_Producer</AssemblyName>
+    <RootNamespace>Demo11.Producer</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Demo11_Shared.csproj" />
+  </ItemGroup>
+</Project>
