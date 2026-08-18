@@ -51,13 +51,15 @@ Jedno źródło prawdy: [PUNKTACJA.md](PUNKTACJA.md).
 - [GRASP](ProjektowanieOprogramowania/GRASP/README.md)
 - [GoF (24 wzorce)](ProjektowanieOprogramowania/GoF/README.md)
 
-## Demonstracje (10 mini-projektów)
+## Demonstracje (11 mini-projektów)
 
-Gotowe przykłady do pokazania na sali, od CLI do JWT: [demonstracje/README.md](demonstracje/README.md).
+Gotowe przykłady do pokazania na sali, od CLI do JWT i kolejki: [demonstracje/README.md](demonstracje/README.md).
 
 ```bash
 dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 dotnet run --project demonstracje/07_NotesApi/src
+# RabbitMQ + SQL Server (wymaga docker compose — patrz demonstracje/11_KolejkaRabbitSql/README.md)
+dotnet run --project demonstracje/11_KolejkaRabbitSql/src/Consumer
 ```
 
 ## Solution
