@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Demo19;
 
 public interface IClock
@@ -34,7 +36,8 @@ public sealed class OrderNotifier
             throw new ArgumentOutOfRangeException(nameof(amount));
 
         var subject = $"Order paid {_clock.UtcNow:yyyy-MM-dd}";
-        await _email.SendAsync(email, subject, $"amount={amount}", cancellationToken);
+        var body = string.Create(CultureInfo.InvariantCulture, $"amount={amount:0.00}");
+        await _email.SendAsync(email, subject, body, cancellationToken);
     }
 }
 

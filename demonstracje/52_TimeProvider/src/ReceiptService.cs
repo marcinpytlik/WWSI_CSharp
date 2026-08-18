@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Demo52;
 
 public sealed class ReceiptService
@@ -6,7 +8,9 @@ public sealed class ReceiptService
     public ReceiptService(TimeProvider clock) => _clock = clock;
 
     public string PaidSubject(decimal amount)
-        => $"Paid {amount:0.00} at {_clock.GetUtcNow().UtcDateTime:yyyy-MM-dd}";
+        => string.Create(
+            CultureInfo.InvariantCulture,
+            $"Paid {amount:0.00} at {_clock.GetUtcNow().UtcDateTime:yyyy-MM-dd}");
 }
 
 public static class Program
