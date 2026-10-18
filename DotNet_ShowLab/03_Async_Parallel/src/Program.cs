@@ -1,0 +1,12 @@
+using System.Diagnostics;
+var s = Stopwatch.StartNew();
+for (int i = 0; i < 5; i++) await Task.Delay(300);
+Console.WriteLine($"Sequential simulated I/O: {s.ElapsedMilliseconds} ms");
+s.Restart();
+await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => Task.Delay(300)));
+Console.WriteLine($"Concurrent simulated I/O: {s.ElapsedMilliseconds} ms");
+s.Restart();
+long[] values = new long[4];
+Parallel.For(0, 4, i => { long result = 0; for (int j = 0; j < 3_000_000; j++) result += j; values[i] = result; });
+Console.WriteLine($"Parallel CPU-bound: {s.ElapsedMilliseconds} ms, checksum={values.Sum()}");
+Console.WriteLine("Task.Delay symuluje czekanie; async nie tworzy automatycznie osobnego wątku.");
