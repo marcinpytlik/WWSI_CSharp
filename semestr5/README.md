@@ -5,6 +5,10 @@
 1. Minimal API · 2. Routing · 3. Walidacja · 4. EF Core setup · 5. CRUD · 6. Relacje
 7. JWT · 8. Middleware/logowanie · 9. Testy integracyjne · 10–11. Projekt mini · 12. Podsumowanie
 
+## Dodatkowy pokaz praktyczny platformy ASP.NET Core
+
+- [Platforma .NET w praktyce — HTTP pipeline, DI, EF Core, JWT i diagnostyka](Platforma_NET/README.md) — 90 minut pokazów, niezależnie od regularnej punktacji.
+
 ## Ćwiczenia tygodniowe
 
 - [Ćwiczenia – 10 tygodni × 5 zadań, 1000 pkt](exercises/README.md)
