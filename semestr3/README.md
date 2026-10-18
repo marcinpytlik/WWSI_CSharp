@@ -15,6 +15,10 @@
 11. Projekt mini (CLI)
 12. Powtórka i podsumowanie
 
+## Dodatkowy pokaz praktyczny platformy .NET
+
+- [Platforma .NET w praktyce — grupy 301 i 302](Platforma_NET/README.md) — 90 minut: IL/JIT, GC, SDK/Runtime, rodzaje aplikacji, EF Core i publikacja/Docker. Materiał pokazowy poza regularną punktacją.
+
 ## Ćwiczenia tygodniowe
 
 - [Ćwiczenia – 10 tygodni × 5 zadań, 1000 pkt](exercises/README.md)
