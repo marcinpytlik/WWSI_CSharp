@@ -26,4 +26,4 @@ Dla stałego adresu można uruchomić `dotnet run --project ... --urls http://lo
 | 65–80 | [05 Publikacja i kontenery](05_Publikacja_Docker/README.md) | publish i runtime |
 | 80–90 | dyskusja i [karta obserwacji](STUDENT-WORKSHEET.md) | rozumienie całości |
 
-[Scenariusz prowadzącego](INSTRUCTOR-GUIDE.md). Wykorzystujemy istniejące przykłady z katalogu `demonstracje/` bez kopiowania ich implementacji.
+**[Instrukcja krok po kroku — wszystkie 5 demonstracji](PRZEWODNIK-KROK-PO-KROKU.md)** · [Skrócony scenariusz prowadzącego](INSTRUCTOR-GUIDE.md). Wykorzystujemy istniejące przykłady z katalogu `demonstracje/` bez kopiowania ich implementacji.
