@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker"><ItemGroup><ProjectReference Include="../Shared/Shared.csproj" /><PackageReference Include="RabbitMQ.Client" /><PackageReference Include="Microsoft.Extensions.Hosting" /><PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" /></ItemGroup></Project>
