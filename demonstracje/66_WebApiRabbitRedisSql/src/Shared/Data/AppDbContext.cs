@@ -7,9 +7,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProcessedCommand> ProcessedCommands => Set<ProcessedCommand>();
+    public DbSet<OperationStatus> OperationStatuses => Set<OperationStatus>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-    }
+        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 }

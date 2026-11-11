@@ -1,0 +1,71 @@
+name: Demo 66 - API Queue SQL Redis
+on:
+  push:
+    paths:
+      - "demonstracje/66_WebApiRabbitRedisSql/**"
+      - ".github/workflows/demo66-hardening.yml"
+      - "Directory.Build.props"
+      - "Directory.Packages.props"
+  pull_request:
+    paths:
+      - "demonstracje/66_WebApiRabbitRedisSql/**"
+      - ".github/workflows/demo66-hardening.yml"
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: Run Docker end-to-end smoke test (requires Linux Docker runner)
+        type: boolean
+        default: false
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build API and Worker
+        run: |
+          dotnet build demonstracje/66_WebApiRabbitRedisSql/src/Api/Api.csproj -c Release
+          dotnet build demonstracje/66_WebApiRabbitRedisSql/src/Worker/Worker.csproj -c Release
+      - name: Run model tests
+        run: dotnet test demonstracje/66_WebApiRabbitRedisSql/tests/QueueCacheDemo.Tests/QueueCacheDemo.Tests.csproj -c Release
+      - name: Validate Docker Compose syntax
+        run: |
+          cd demonstracje/66_WebApiRabbitRedisSql
+          cp .env.example .env
+          docker compose config --quiet
+
+  docker-integration:
+    if: github.event_name == 'workflow_dispatch' && inputs.integration == true
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create local integration config
+        run: |
+          cd demonstracje/66_WebApiRabbitRedisSql
+          cp .env.example .env
+      - name: Start infrastructure
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: docker compose up -d sql rabbitmq redis
+      - name: Provision database
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: docker compose --profile setup run --rm db-init
+      - name: Build and start apps
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: docker compose up --build -d api worker
+      - name: Smoke test
+        shell: pwsh
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: ./scripts/Smoke-Test.ps1
+      - name: Print logs on failure
+        if: failure()
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: docker compose logs --tail=100 api worker db-init sql rabbitmq
+      - name: Stop
+        if: always()
+        working-directory: demonstracje/66_WebApiRabbitRedisSql
+        run: docker compose down

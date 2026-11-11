@@ -3,39 +3,39 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Copy .env.example to .env}"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}"
       MSSQL_PID: "Developer"
-    ports:
-      - "127.0.0.1:14353:1433"
-    volumes:
-      - sql_data:/var/opt/mssql
+    ports: ["127.0.0.1:14353:1433"]
+    volumes: [sql_data:/var/opt/mssql]
     healthcheck:
       test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' >/dev/null || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 20
 
+  # Explicit deployment step, NOT executed on every application restart.
   db-init:
+    profiles: ["setup"]
     image: mcr.microsoft.com/mssql/server:2022-latest
     entrypoint: ["/bin/bash", "/scripts/init-db.sh"]
     environment:
-      SQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Copy .env.example to .env}"
+      SQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}"
       SQL_API_PASSWORD: "${SQL_API_PASSWORD:?Set SQL_API_PASSWORD in .env}"
       SQL_WORKER_PASSWORD: "${SQL_WORKER_PASSWORD:?Set SQL_WORKER_PASSWORD in .env}"
-    volumes:
-      - ./sql:/scripts:ro
+    volumes: ["./sql:/scripts:ro"]
     depends_on:
-      sql:
-        condition: service_healthy
+      sql: {condition: service_healthy}
     restart: "no"
 
   rabbitmq:
     image: rabbitmq:4-management
+    hostname: rabbitmq
     environment:
+      RABBITMQ_NODENAME: "rabbit@rabbitmq"
       RABBITMQ_DEFAULT_USER: "${RABBIT_USER:?Set RABBIT_USER in .env}"
       RABBITMQ_DEFAULT_PASS: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
-    ports:
-      - "127.0.0.1:15672:15672"
+    volumes: [rabbitmq_data:/var/lib/rabbitmq]
+    ports: ["127.0.0.1:15672:15672"]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -51,6 +51,29 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: ../..
+      dockerfile: demonstracje/66_WebApiRabbitRedisSql/src/Api/Dockerfile
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__Sql: "Server=sql;Database=WwsiQueueCache;User Id=wwsi_api;Password=${SQL_API_PASSWORD:?Set SQL_API_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      Auth__SigningKey: "${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}"
+      Auth__Issuer: "${JWT_ISSUER:-wwsi-demo}"
+      Auth__Audience: "${JWT_AUDIENCE:-wwsi-api}"
+      Rabbit__Host: "rabbitmq"
+      Rabbit__User: "${RABBIT_USER:?Set RABBIT_USER in .env}"
+      Rabbit__Password: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
+      OTEL_SERVICE_NAME: "wwsi-queue-api"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+    depends_on:
+      sql: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+
   worker:
     build:
       context: ../..
@@ -61,36 +84,13 @@ services:
       Rabbit__Host: "rabbitmq"
       Rabbit__User: "${RABBIT_USER:?Set RABBIT_USER in .env}"
       Rabbit__Password: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
+      OTEL_SERVICE_NAME: "wwsi-queue-worker"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
     depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      sql: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_healthy}
     restart: unless-stopped
-
-  api:
-    build:
-      context: ../..
-      dockerfile: demonstracje/66_WebApiRabbitRedisSql/src/Api/Dockerfile
-    ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__Sql: "Server=sql;Database=WwsiQueueCache;User Id=wwsi_api;Password=${SQL_API_PASSWORD:?Set SQL_API_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True"
-      ConnectionStrings__Redis: "redis:6379"
-      Rabbit__Host: "rabbitmq"
-      Rabbit__User: "${RABBIT_USER:?Set RABBIT_USER in .env}"
-      Rabbit__Password: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
 volumes:
   sql_data:
+  rabbitmq_data:
