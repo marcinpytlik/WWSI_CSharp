@@ -27,6 +27,9 @@ public sealed class GlobalExceptionHandler(
             RequestConflictException => StatusCodes.Status409Conflict,
             DependencyUnavailableException => StatusCodes.Status503ServiceUnavailable,
             TimeoutException => StatusCodes.Status503ServiceUnavailable,
+            Microsoft.EntityFrameworkCore.DbUpdateException db
+                when FailureClassifier.Classify(db) == FailureKind.Transient
+                    => StatusCodes.Status503ServiceUnavailable,
             Microsoft.Data.SqlClient.SqlException sql
                 when FailureClassifier.Classify(sql) == FailureKind.Transient
                     => StatusCodes.Status503ServiceUnavailable,

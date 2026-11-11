@@ -1,7 +1,6 @@
 namespace QueueCacheDemo.Errors;
 
 public sealed class DependencyUnavailableException(string dependency, Exception? inner = null)
-    : ApplicationExceptionBase("DEPENDENCY_UNAVAILABLE", $"{dependency} is temporarily unavailable.")
+    : ApplicationExceptionBase("DEPENDENCY_UNAVAILABLE", $"{dependency} is temporarily unavailable.", inner)
 {
-    public Exception? Cause { get; } = inner;
 }
