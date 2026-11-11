@@ -42,32 +42,47 @@ public sealed class Consumer(IServiceScopeFactory scopes, IConfiguration config,
             {
                 var cmd = JsonSerializer.Deserialize<CreateProduct>(ea.Body.Span)
                           ?? throw new InvalidOperationException("Empty command");
-                using var scope = scopes.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var cache = scope.ServiceProvider.GetRequiredService<IDistributedCache>();
-                // PK deduplicates delivery; transaction protects both product and processed-marker.
-                await using (var tx = await db.Database.BeginTransactionAsync(stoppingToken))
+                // EF Core retry strategy must own the entire explicit transaction.
+                // A fresh DbContext per attempt avoids retaining tracked entities after a failed attempt.
+                using (var strategyScope = scopes.CreateScope())
                 {
-                    var processed = await db.ProcessedCommands.AnyAsync(x => x.Id == cmd.OperationId, stoppingToken);
-                    if (!processed)
+                    var strategyDb = strategyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var strategy = strategyDb.Database.CreateExecutionStrategy();
+                    await strategy.ExecuteAsync(async () =>
                     {
-                        db.Products.Add(new Product
+                        using var transactionScope = scopes.CreateScope();
+                        var db = transactionScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
+                        var processed = await db.ProcessedCommands
+                            .AnyAsync(x => x.Id == cmd.OperationId, stoppingToken);
+                        if (!processed)
                         {
-                            Id = cmd.ProductId, Name = cmd.Name, Price = cmd.Price,
-                            CreatedAtUtc = DateTime.UtcNow
-                        });
-                        db.ProcessedCommands.Add(new ProcessedCommand
-                        {
-                            Id = cmd.OperationId, CompletedAtUtc = DateTime.UtcNow
-                        });
-                        await db.SaveChangesAsync(stoppingToken);
-                    }
-                    await tx.CommitAsync(stoppingToken);
+                            db.Products.Add(new Product
+                            {
+                                Id = cmd.ProductId,
+                                Name = cmd.Name,
+                                Price = cmd.Price,
+                                CreatedAtUtc = DateTime.UtcNow
+                            });
+                            db.ProcessedCommands.Add(new ProcessedCommand
+                            {
+                                Id = cmd.OperationId,
+                                CompletedAtUtc = DateTime.UtcNow
+                            });
+                            await db.SaveChangesAsync(stoppingToken);
+                        }
+                        await tx.CommitAsync(stoppingToken);
+                    });
                 }
-                try { await cache.RemoveAsync($"products:{cmd.ProductId:N}", stoppingToken); }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                // Cache invalidation follows SQL commit; a failed invalidation is bounded by TTL.
+                using (var cacheScope = scopes.CreateScope())
                 {
-                    log.LogWarning(ex, "Redis invalidation failed; TTL bounds staleness");
+                    var cache = cacheScope.ServiceProvider.GetRequiredService<IDistributedCache>();
+                    try { await cache.RemoveAsync($"products:{cmd.ProductId:N}", stoppingToken); }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        log.LogWarning(ex, "Redis invalidation failed; TTL bounds staleness");
+                    }
                 }
                 await channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
                 log.LogInformation("Completed {OperationId}", cmd.OperationId);
