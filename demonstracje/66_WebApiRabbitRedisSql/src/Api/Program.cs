@@ -1,85 +1,118 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using QueueCacheDemo;
+using QueueCacheDemo.Api.Middleware;
+using QueueCacheDemo.Contracts;
+using QueueCacheDemo.Data;
 using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlServer(builder.Configuration.GetConnectionString("Sql"), sql => sql.EnableRetryOnFailure()));
-builder.Services.AddStackExchangeRedisCache(o => o.Configuration = builder.Configuration.GetConnectionString("Redis")!);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Sql"),
+        sql => sql.EnableRetryOnFailure()));
+builder.Services.AddStackExchangeRedisCache(options =>
+    options.Configuration = builder.Configuration.GetConnectionString("Redis")!);
+
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new {status = "running"}));
+// Logging wraps exception handling, so errors are logged with final HTTP 500 status.
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-app.MapPost("/products", async (CreateProductRequest request, IConfiguration config, CancellationToken ct) =>
+app.MapGet("/health", () => Results.Ok(new { status = "running" }));
+
+app.MapPost("/products", async (CreateProductRequest request, IConfiguration configuration, CancellationToken ct) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 200 || request.Price < 0 || request.Price > 9999999999999999m)
-        return Results.BadRequest(new { error = "Name (1..200) and nonnegative price are required." });
+    if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 200 ||
+        request.Price < 0 || request.Price > 9999999999999999m)
+    {
+        return Results.BadRequest(new { error = "Name (1..200) and price (0..9999999999999999) are required." });
+    }
 
     var operationId = Guid.NewGuid();
     var productId = Guid.NewGuid();
     var command = new CreateProduct(operationId, productId, request.Name.Trim(), request.Price);
     var factory = new ConnectionFactory
     {
-        HostName = config["Rabbit:Host"] ?? "localhost",
-        UserName = "demo",
-        Password = "demo"
+        HostName = configuration["Rabbit:Host"] ?? "localhost",
+        UserName = configuration["Rabbit:User"] ?? throw new InvalidOperationException("Rabbit:User not configured"),
+        Password = configuration["Rabbit:Password"] ?? throw new InvalidOperationException("Rabbit:Password not configured")
     };
+
     try
     {
         await using var connection = await factory.CreateConnectionAsync(ct);
         await using var channel = await connection.CreateChannelAsync(
-            new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true), ct);
+            new CreateChannelOptions(publisherConfirmationsEnabled: true,
+                publisherConfirmationTrackingEnabled: true), ct);
         await channel.QueueDeclareAsync("products.create", durable: true, exclusive: false, autoDelete: false,
-            arguments: new Dictionary<string, object?> { ["x-dead-letter-exchange"] = "products.dlx" }, cancellationToken: ct);
-        var props = new BasicProperties { Persistent = true, MessageId = operationId.ToString() };
-        await channel.BasicPublishAsync("", "products.create", true, props,
-            JsonSerializer.SerializeToUtf8Bytes(command), ct);
-        return Results.Accepted($"/operations/{operationId}", new { operationId, productId, status = "accepted" });
+            arguments: new Dictionary<string, object?> { ["x-dead-letter-exchange"] = "products.dlx" },
+            cancellationToken: ct);
+        await channel.BasicPublishAsync("",
+            routingKey: "products.create", mandatory: true,
+            basicProperties: new BasicProperties { Persistent = true, MessageId = operationId.ToString() },
+            body: JsonSerializer.SerializeToUtf8Bytes(command), cancellationToken: ct);
+
+        return Results.Accepted($"/operations/{operationId}",
+            new { operationId, productId, status = "accepted" });
     }
     catch (Exception ex) when (ex is not OperationCanceledException)
     {
-        app.Logger.LogError(ex, "RabbitMQ publish failed");
-        return Results.Problem("Message could not be confirmed by broker.", statusCode: 503);
+        app.Logger.LogError(ex, "RabbitMQ publication failed for {OperationId}", operationId);
+        return Results.Problem(
+            title: "Messaging unavailable",
+            detail: "The broker did not confirm acceptance of the command.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
 
-app.MapGet("/products/{id:guid}", async (Guid id, AppDbContext db, IDistributedCache cache, HttpContext http, CancellationToken ct) =>
-{
-    var key = $"products:{id:N}";
-    try
+app.MapGet("/products/{id:guid}",
+    async (Guid id, AppDbContext db, IDistributedCache cache, HttpContext http, CancellationToken ct) =>
     {
-        var cached = await cache.GetStringAsync(key, ct);
-        if (cached is not null)
+        var key = $"products:{id:N}";
+        try
         {
-            http.Response.Headers["X-Cache"] = "HIT";
-            return Results.Content(cached, "application/json");
+            var cached = await cache.GetStringAsync(key, ct);
+            if (cached is not null)
+            {
+                http.Response.Headers["X-Cache"] = "HIT";
+                return Results.Content(cached, "application/json");
+            }
         }
-    }
-    catch (Exception ex) when (ex is not OperationCanceledException)
-    {
-        app.Logger.LogWarning(ex, "Redis unavailable, reading SQL directly");
-    }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            app.Logger.LogWarning(ex, "Redis cache unavailable; read will use SQL Server");
+        }
 
-    // No negative caching: a queued command might not be committed yet.
-    var p = await db.Products.AsNoTracking().Where(p => p.Id == id)
-        .Select(p => new ProductDto(p.Id, p.Name, p.Price)).SingleOrDefaultAsync(ct);
-    http.Response.Headers["X-Cache"] = "MISS";
-    if (p is null) return Results.NotFound();
+        var product = await db.Products.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new ProductDto(x.Id, x.Name, x.Price))
+            .SingleOrDefaultAsync(ct);
 
-    var json = JsonSerializer.Serialize(p, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    try
-    {
-        await cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
-        { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(15) }, ct);
-    }
-    catch (Exception ex) when (ex is not OperationCanceledException)
-    {
-        app.Logger.LogWarning(ex, "Redis SET failed");
-    }
-    return Results.Content(json, "application/json");
-});
+        http.Response.Headers["X-Cache"] = "MISS";
+        if (product is null)
+        {
+            // Do not cache 404 while an accepted command could still be in the queue.
+            return Results.NotFound();
+        }
+
+        var json = JsonSerializer.Serialize(product, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        try
+        {
+            await cache.SetStringAsync(key, json,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(15)
+                }, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            app.Logger.LogWarning(ex, "Redis cache write failed");
+        }
+
+        return Results.Content(json, "application/json");
+    });
 
 app.MapGet("/operations/{id:guid}", async (Guid id, AppDbContext db, CancellationToken ct) =>
 {
@@ -88,4 +121,5 @@ app.MapGet("/operations/{id:guid}", async (Guid id, AppDbContext db, Cancellatio
 });
 
 app.Run();
+
 public sealed record CreateProductRequest(string Name, decimal Price);

@@ -1,46 +1,35 @@
-# 66 — Web API → RabbitMQ → SQL Server + Redis (Cache-Aside)
+# 66 — ASP.NET Core Web API → RabbitMQ → SQL Server + Redis
 
-Demonstracja .NET 10: **asynchroniczne zapisy (eventual consistency)** oraz **odczyty z Redis Cache**. SQL Server to system of record. API nie zapisuje bezpośrednio do SQL.
+.NET 10, EF Core 10, SQL Server 2022, RabbitMQ i Redis. Przykład pokazuje **eventual consistency**, **cache-aside**, **idempotentny Worker**, **minimalne uprawnienia do SQL Server** i **middleware obsługi wyjątków / logowania HTTP**.
 
-## Architektura rozwiązania
-
-### 1. Diagram komponentów (C4 — poziom kontenerów)
+## 1. Architektura
 
 ```mermaid
 flowchart LR
-    Client["Klient HTTP<br/>PowerShell / przeglądarka"]
-    API["ASP.NET Core Web API<br/>.NET 10"]
-    MQ[("RabbitMQ<br/>products.create")]
-    Worker["Worker Service<br/>.NET 10"]
-    SQL[("SQL Server 2022<br/>WwsiQueueCache")]
-    Redis[("Redis<br/>TTL 15 s")]
-    DLQ[("RabbitMQ DLQ<br/>products.dead")]
+    Client["Klient HTTP"]
+    API["ASP.NET Core Web API<br/>.NET 10<br/>wwsi_api (SELECT)"]
+    Q[("RabbitMQ<br/>products.create")]
+    W[".NET Worker<br/>wwsi_worker (SELECT/INSERT)"]
+    SQL[("SQL Server 2022<br/>dbo.Products<br/>dbo.ProcessedCommands")]
+    R[("Redis Cache<br/>TTL 15 s")]
+    DLQ[("Dead Letter Queue<br/>products.dead")]
+    Init["db-init<br/>jednorazowy provisioning<br/>sa"]
 
     Client -->|"POST /products"| API
-    API -->|"Persistent publish + publisher confirm"| MQ
-    API -->|"202 Accepted"| Client
-    MQ -->|"Consume"| Worker
-    Worker -->|"EF Core transaction / COMMIT"| SQL
-    Worker -.->|"Cache invalidation after COMMIT"| Redis
-    Worker -->|"ACK after COMMIT"| MQ
-    MQ -->|"Reject / dead-letter on failure"| DLQ
-    Client -->|"GET /products/{id}, GET /operations/{id}"| API
-    API -->|"Cache-aside GET / SET"| Redis
-    API -->|"Read on cache miss + operation status"| SQL
+    API -->|"publish / confirm"| Q
+    Q -->|"consume"| W
+    W -->|"BEGIN / INSERT / COMMIT"| SQL
+    W -.->|"DEL po COMMIT"| R
+    Q -.->|"NACK requeue=false"| DLQ
+    Client -->|"GET /products/{id}<br/>GET /operations/{id}"| API
+    API <-->|"Cache-aside GET/SET"| R
+    API -->|"SELECT (cache miss, status)"| SQL
+    Init -.->|"tworzy DB/tabele/login/role"| SQL
 ```
 
-**Podział odpowiedzialności**
+**SQL Server jest źródłem prawdy**. Redis przyspiesza GET, ale dane nie muszą być w nim obecne. API nie wykonuje INSERT. Jedynym podmiotem mającym uprawnienia DDL jest osobny etap `db-init`; konta aplikacyjne nie są `db_owner` ani `db_ddladmin`.
 
-| Komponent | Rola | Stan / kontrakt |
-|---|---|---|
-| Klient | Wywołuje HTTP i sprawdza status operacji | POST, GET |
-| Web API (`src/Api`) | Waliduje POST, publikuje komunikat; przy GET korzysta z cache-aside | Zwraca 202 po potwierdzeniu publikacji |
-| RabbitMQ | Trwała kolejka poleceń zapisu | `products.create`; DLQ `products.dead` |
-| Worker (`src/Worker`) | Pobiera polecenia i zapisuje produkt oraz znacznik obsłużenia | Manual ACK po SQL COMMIT |
-| SQL Server | Źródło prawdy; przechowuje produkty i identyfikatory wykonanych operacji | `dbo.Products`, `dbo.ProcessedCommands` |
-| Redis | Cache odczytowy, nie źródło prawdy | Klucz `products:{guid:N}`, TTL 15 s |
-
-### 2. Sekwencja zapisu — eventual consistency
+### Sekwencja zapisu
 
 ```mermaid
 sequenceDiagram
@@ -52,132 +41,162 @@ sequenceDiagram
     participant D as SQL Server
     participant R as Redis
     C->>A: POST /products
-    A->>Q: Publish CreateProduct (persistent)
-    Q-->>A: Publisher confirm
-    A-->>C: 202 Accepted + operationId + productId
-    Note over C,D: Produkt może jeszcze nie istnieć w SQL (eventual consistency)
-    Q->>W: Deliver CreateProduct
-    W->>D: Begin transaction
-    W->>D: Check ProcessedCommands + INSERT Product + marker
+    A->>Q: persistent publish
+    Q-->>A: publisher confirm
+    A-->>C: 202 Accepted + operationId, productId
+    Note over C,D: Eventual consistency - SQL może jeszcze nie mieć produktu
+    Q->>W: dostarczenie polecenia
+    W->>D: transakcja + kontrola ProcessedCommands
+    W->>D: INSERT Products + ProcessedCommands
     D-->>W: COMMIT
-    W-->>R: DEL products:{productId}
+    W->>R: DEL products:{id} (best effort)
     W-->>Q: ACK
-    C->>A: GET /operations/{operationId}
-    A->>D: Check ProcessedCommands
-    D-->>A: Found
+    C->>A: GET /operations/{id}
+    A->>D: SELECT ProcessedCommands
     A-->>C: completed
 ```
 
-Odpowiedź **202 Accepted** informuje tylko o potwierdzeniu publikacji w RabbitMQ. Nie gwarantuje jeszcze wykonania transakcji SQL. `GET /operations/{id}` zwraca obecnie `completed` lub `pending_or_unknown`; drugi status nie rozróżnia oczekiwania, błędu i nieznanej operacji. Przed COMMIT `GET /products/{id}` może poprawnie zwrócić **404**.
+`202 Accepted` oznacza potwierdzenie publikacji, **nie** COMMIT. Przed zakończeniem pracy Workera `GET /products/{id}` może zwracać `404`, a `GET /operations/{id}`: `pending_or_unknown`. Worker używa `CreateExecutionStrategy().ExecuteAsync()` dla całej transakcji (z nowym `DbContext` podczas próby). Ponowne dostarczenie wiadomości z tym samym `OperationId` nie powoduje drugiego INSERT, bo `ProcessedCommands` jest zapisywane atomowo z `Products`.
 
-RabbitMQ dostarcza wiadomości z semantyką **at-least-once**. Worker sprawdza `ProcessedCommands.Id` i zapisuje znacznik razem z produktem w transakcji; przy ponownym dostarczeniu z tym samym `OperationId` nie wykonuje ponownie INSERT. EF Core `SqlServerRetryingExecutionStrategy` obejmuje **całą transakcję** poprzez `CreateExecutionStrategy().ExecuteAsync()`, z nowym DbContext na próbę.
-
-### 3. Sekwencja odczytu — cache-aside
+### Sekwencja odczytu
 
 ```mermaid
 sequenceDiagram
-    autonumber
     participant C as Klient
     participant A as Web API
     participant R as Redis
     participant D as SQL Server
     C->>A: GET /products/{id}
     A->>R: GET products:{id}
-    alt Redis HIT
-        R-->>A: JSON produktu
+    alt Cache HIT
+        R-->>A: JSON
         A-->>C: 200 + X-Cache: HIT
-    else Redis MISS lub Redis niedostępny
-        A->>D: SELECT Product by Id
-        alt Produkt istnieje
-            D-->>A: ProductDto
-            A->>R: SET JSON TTL=15s (best effort)
-            A-->>C: 200 + X-Cache: MISS
-        else Brak produktu
-            D-->>A: Brak
-            A-->>C: 404 + X-Cache: MISS
+    else Cache MISS lub Redis offline
+        A->>D: SELECT produktu
+        D-->>A: wiersz albo brak
+        opt Produkt istnieje
+            A->>R: SET TTL 15s (best effort)
         end
+        A-->>C: 200/404 + X-Cache: MISS
     end
 ```
 
-Redis jest optymalizacją: podczas awarii Redis API próbuje odczytać SQL bez cache. **404 nie jest cache'owane**, żeby zaakceptowane, ale jeszcze niezapisane polecenia mogły być widoczne po COMMIT. Worker unieważnia odpowiedni klucz po transakcji; brak atomowości między SQL i Redis oznacza możliwe chwilowe nieaktualne odczyty (włącznie z wyścigiem cache miss vs COMMIT). TTL ogranicza czas utrzymania wpisu, lecz nie gwarantuje read-your-writes.
+Brak produktu nie jest cache'owany. Gdy Redis nie działa, GET korzysta z SQL Server. Inwalidacja po COMMIT jest best-effort, a TTL ogranicza czas życia wpisów; możliwe są chwilowe nieaktualne odczyty. Nie gwarantujemy `read-your-writes`.
 
-### 4. Infrastruktura Docker Compose
+## 2. Organizacja kodu
 
 ```text
-                         Docker Compose network
-┌────────────────────────────────────────────────────────────────────┐
-│ api:8080 ───────── rabbitmq:5672 ───────── worker                  │
-│    │                                       │                      │
-│    ├───────────── redis:6379 ◄─────────────┤                      │
-│    └───────────── sql:1433   ◄─────────────┘                      │
-└────────────────────────────────────────────────────────────────────┘
-host: 8080 → API; 15672 → RabbitMQ Management; 14353 → SQL 1433
-Redis 6379 jest udostępniony wewnątrz sieci Compose, bez mapowania na hosta.
+66_WebApiRabbitRedisSql/
+├── .env.example                   # przykład ustawień laboratorium
+├── docker-compose.yml
+├── sql/
+│   ├── init-db.sh                 # uruchamiany tylko przez db-init
+│   ├── 01-bootstrap.sql           # baza, tabele, loginy, role i GRANT
+│   └── 02-verify-permissions.sql  # kontrola uprawnień
+└── src/
+    ├── Api/
+    │   ├── Program.cs
+    │   └── Middleware/
+    │       ├── RequestLoggingMiddleware.cs
+    │       └── ExceptionHandlingMiddleware.cs
+    ├── Worker/
+    │   └── Program.cs
+    └── Shared/
+        ├── Contracts/
+        │   ├── CreateProduct.cs
+        │   └── ProductDto.cs
+        ├── Entities/
+        │   ├── Product.cs
+        │   └── ProcessedCommand.cs
+        └── Data/
+            ├── AppDbContext.cs
+            └── Configuration/
+                ├── ProductConfiguration.cs
+                └── ProcessedCommandConfiguration.cs
 ```
 
-API i Worker mają osobne projekty i obrazy. `Shared` zawiera `Product`, `ProcessedCommand`, `CreateProduct`, `ProductDto` i `AppDbContext`. Worker tworzy schemat demonstracyjny przez `EnsureCreated` (wyłącznie lab). Healthcheck SQL używa zmiennej `$$MSSQL_SA_PASSWORD` w Compose, aby powłoka kontenera otrzymała `$MSSQL_SA_PASSWORD` i mogła odczytać hasło.
+`AppDbContext` używa `ApplyConfigurationsFromAssembly`, a mapowanie tabel/kolumn jest w klasach `IEntityTypeConfiguration<T>`. Modele domenowe nie zawierają kodu mapowania EF.
 
-### 5. Awaria a spójność
+**Middleware API:** `RequestLoggingMiddleware` zapisuje metodę, ścieżkę, status, czas i trace ID (bez body ani haseł); `ExceptionHandlingMiddleware` rejestruje wyjątek w logach i zwraca ustandaryzowaną odpowiedź ProblemDetails HTTP 500 z `traceId`, bez stack trace dla klienta. Worker nie ma HTTP middleware — stosuje `ILogger`, obsługę wyjątków konsumenta, ACK/NACK i DLQ.
 
-| Sytuacja | Oczekiwane zachowanie w bieżącej implementacji |
-|---|---|
-| Worker zatrzymany | API może zwracać 202; wiadomości czekają w RabbitMQ; status `pending_or_unknown` |
-| SQL niedostępny podczas obsługi | Worker zgłasza błąd; wiadomość może trafić do DLQ; brak automatycznego retry na poziomie wiadomości |
-| Redis niedostępny podczas GET | API próbuje odczytu z SQL; wpis nie trafia do cache |
-| Redis niedostępny po COMMIT | Worker loguje ostrzeżenie; ACK nadal jest wysyłany; ewentualny stary wpis wygaśnie według TTL |
-| Worker zakończony po COMMIT, przed ACK | Broker może dostarczyć wiadomość ponownie; znacznik w SQL zapobiega ponownemu INSERT |
-| Powtarzane POST tego samego żądania | Każdy POST generuje nowy OperationId i ProductId — **brak idempotency key po stronie API** |
+## 3. Minimalne uprawnienia SQL Server
 
-**Granica dydaktyczna:** to działająca demonstracja, a nie gotowy wzorzec produkcyjny. Nie ma trwałego rejestru statusów pending/failed, procesu automatycznego replay z DLQ, transakcyjnego mechanizmu niezawodnej invalidacji ani osobnych kont o minimalnych uprawnieniach. `/health` potwierdza działanie procesu API, nie pełną gotowość zależności.
+| Zasób / uprawnienie | `wwsi_api` | `wwsi_worker` | `sa` wyłącznie `db-init` |
+|---|:---:|:---:|:---:|
+| `dbo.Products` — SELECT | Tak | Tak | Tak |
+| `dbo.Products` — INSERT | Nie | Tak | Tak |
+| `dbo.ProcessedCommands` — SELECT | Tak | Tak | Tak |
+| `dbo.ProcessedCommands` — INSERT | Nie | Tak | Tak |
+| UPDATE / DELETE / ALTER / CREATE TABLE | Nie | Nie | Tak |
+| Tworzenie bazy, loginów, schematu | Nie | Nie | Tak |
 
-### 6. Wynik weryfikacji (11.11.2026)
+Role: `role_api_reader` oraz `role_worker_writer`. Uprawnienia przyznane są **do konkretnych tabel**, nie przez szerokie `db_datareader`, `db_datawriter`, `db_owner` czy `db_ddladmin`. Inicjalizacja jest idempotentna i obsługuje **istniejącą bazę WwsiQueueCache** bez kasowania danych.
 
-Wykonany ręczny scenariusz potwierdził: POST zwraca `accepted`, późniejsze `GET /operations/{id}` zwraca `completed`, pierwszy GET produktu zwraca `X-Cache: MISS`, a kolejny `X-Cache: HIT`. Jest to test funkcjonalny, **nie** benchmark wydajności ani test odporności na awarie.
+`db-init` uruchamia `sql/01-bootstrap.sql` i kończy się kodem 0; dopiero po jego poprawnym zakończeniu startują API i Worker. Worker **nie wywołuje `EnsureCreated`**. `sa` nie jest dostępne w konfiguracji API ani Workera.
 
-## Start
+Aby zweryfikować uprawnienia, w SSMS jako `sa` wykonaj `sql/02-verify-permissions.sql`. Oczekiwane wartości kolumn `ProductsSelect, ProductsInsert, CommandsSelect, CommandsInsert` to:
+- `wwsi_api`: **1, 0, 1, 0**
+- `wwsi_worker`: **1, 1, 1, 1**
 
-Wymagane: Docker Desktop z >= 4 GB RAM dostępnej dla SQL Server i Docker Compose.
+Przy próbie `INSERT` z loginu API SQL powinien zwrócić odmowę uprawnień.
 
-1. Z katalogu tej demonstracji: `docker compose up --build -d`
-2. Stan kontenerów: `docker compose ps`, logi: `docker compose logs -f api worker`
-3. Swagger nie jest wymagany; endpoint health: `http://localhost:8080/health`.
-4. RabbitMQ UI: `http://localhost:15672` (demo/demo).
-5. SQL Server: localhost,14353, login sa, hasło **wyłącznie laboratoryjne** z compose.
+## 4. Uruchomienie Docker Compose
 
-### Windows PowerShell
+Wymagane: Docker Desktop, Docker Compose oraz zasoby na SQL Server.
+
+**Pierwszy start lub aktualizacja poprzedniej wersji:**
 
 ```powershell
-$body = @{ name = "Monitor"; price = 799.99 } | ConvertTo-Json
-$r = Invoke-RestMethod -Method Post -Uri http://localhost:8080/products -ContentType application/json -Body $body
-$r                       # 202 Accepted; operationId oraz productId
-Invoke-RestMethod "http://localhost:8080/operations/$($r.operationId)"
-Invoke-RestMethod "http://localhost:8080/products/$($r.productId)"
+cd .\demonstracje\66_WebApiRabbitRedisSql
+Copy-Item .env.example .env
+docker compose config
+docker compose up --build -d
+docker compose ps -a
 ```
 
-Przy pierwszym GET produkt może zwrócić 404, dopóki Worker nie zakończy transakcji: to zamierzone **eventual consistency**. Powtórz GET i porównaj nagłówek `X-Cache` (MISS/HIT). W API GET działa cache-aside z TTL 15 sekund. Brak rekordu nie jest cache'owany.
+Użytkownik, który już posiada wolumen `sql_data` z wcześniejszych ćwiczeń, powinien pozostawić `SQL_SA_PASSWORD` zgodne z **dotychczasowym** hasłem `sa`. Nie uruchamiaj `docker compose down -v` — to skasowałoby bazę.
 
-### Scenariusze badawcze
+Wynik `docker compose ps -a`: `sql`, `rabbitmq` i `redis` mają status `healthy`; `db-init` ma `Exited (0)`; `api` i `worker` są `Up`. `docker compose config` pokazuje hasła w postaci jawnej — **nie publikuj jego wyniku w Internecie**.
 
-1. Wykonaj POST, następnie od razu GET oraz GET po przetworzeniu; sprawdź `202` i status operacji.
-2. Powtórz GET: pierwszy powinien zwrócić MISS, kolejny HIT.
-3. Zatrzymaj Worker (`docker compose stop worker`), wyślij kilka POST, sprawdź gotowe komunikaty w RabbitMQ, uruchom Worker i odczytaj dane.
-4. Zatrzymaj Redis; GET korzysta awaryjnie z SQL Server. Przywróć Redis.
-5. Sprawdź w SQL `dbo.Products` i `dbo.ProcessedCommands`, obserwując idempotentne przetwarzanie.
+Porty na hoście (tylko loopback): API `http://localhost:8080`; RabbitMQ UI `http://localhost:15672` (dane z `.env`); SQL Server `localhost,14353`. Redis jest tylko w sieci Compose.
 
-### Semantyka i ograniczenia
+Wszystkie hasła w `.env.example` są **wyłącznie do laboratorium**; plik `.env` jest ignorowany przez Git. W produkcji zastosuj sekret manager, odrębne konta i proces migracji, TLS, ograniczenia dostępu oraz rotację haseł. Użyte w labie `sqlcmd -v` może ujawnić hasła w argumentach procesu; nie należy przenosić tej metody na produkcję.
 
-- API zwraca 202 dopiero po publisher confirm RabbitMQ; nie oznacza to zatwierdzenia rekordu w SQL.
-- Worker używa manual ACK **po COMMIT**. Identyfikator operacji jest kluczem w tabeli `ProcessedCommands`; ponowna dostawa komunikatu nie tworzy drugiego produktu.
-- W razie błędu przetwarzania komunikat jest odrzucany do DLQ `products.dead` (bez automatycznych retry w tym laboratorium). Operacja może pozostać niepotwierdzona, dopóki nie zostanie obsłużona ręcznie.
-- Klucze Redis są usuwane po COMMIT. Inwalidacja nie jest transakcyjna z SQL; przy jej niepowodzeniu TTL ogranicza okres nieaktualności. Możliwy jest również wyścig między cache miss i zapisem. To **nie** zapewnia silnej spójności ani gwarantowanego read-your-writes.
-- `GET /operations/{id}` zwraca `completed` lub `pending_or_unknown`; brak osobnej trwałej tabeli statusów poleceń oczekujących / odrzuconych.
-- `EnsureCreated` zastosowano wyłącznie do demonstracji (nie do migracji produkcyjnych). Produkcyjnie wymagane: migracje, osobne konta SQL, TLS, sekrety, RBAC, health checks zależności, retry policy + DLQ/replay, obserwowalność i odporna invalidacja.
-- Hasła w `docker-compose.yml` są przykładowe: **nie wdrażaj tego konfiguracji na produkcję**.
+## 5. Test end-to-end
 
-## Budowa bez Dockera
+```powershell
+Invoke-RestMethod http://localhost:8080/health
 
-Rozwiązanie projektów pod `src` korzysta z nadrzędnych `Directory.Build.props` i `Directory.Packages.props` całego repozytorium. Lokalnie z katalogu repo: `dotnet build demonstracje/66_WebApiRabbitRedisSql/src/Api/Api.csproj` oraz analogicznie Worker.
+$body = @{ name = "EF Core 10"; price = 100.00 } | ConvertTo-Json
+$response = Invoke-RestMethod -Method Post -Uri http://localhost:8080/products -ContentType application/json -Body $body
+$response | Format-List # accepted
 
-## Warto omówić ze studentami
+Invoke-RestMethod "http://localhost:8080/operations/$($response.operationId)"
+# Po COMMIT: completed
 
-Co oznacza 202? Dlaczego ACK po COMMIT? Czym różni się cache miss od nieistniejącego rekordu? Jak działa at-least-once i idempotencja? Co się stanie gdy SQL zatwierdzi zmianę, ale Redis lub RabbitMQ są niedostępne?
+$url = "http://localhost:8080/products/$($response.productId)"
+1..2 | ForEach-Object {
+    $r = Invoke-WebRequest -Uri $url
+    [PSCustomObject]@{ Request = $_; Cache = $r.Headers["X-Cache"]; Body = $r.Content }
+}
+# MISS a potem HIT, jeśli TTL (15 s) nie wygasło
+```
+
+Logi: `docker compose logs --tail=100 api worker db-init`. Kolejki: `docker compose exec rabbitmq rabbitmqctl list_queues name messages_ready messages_unacknowledged consumers`.
+
+## 6. Scenariusze awaryjne i ograniczenia
+
+1. `docker compose stop worker`, wyślij POST i sprawdź status `pending_or_unknown`, następnie `docker compose start worker` i odczytaj status `completed`.
+2. Zatrzymaj Redis, sprawdź odczyt GET z SQL Server, ponownie uruchom Redis.
+3. Obejrzyj `products.dead`: na błędzie aplikacyjnym Worker wykonuje NACK bez requeue. **Automatyczny replay i trwały status failed nie są zaimplementowane.**
+4. Powtórna dostawa **tego samego** `OperationId` jest idempotentna. Ponowny POST bez klucza idempotencji tworzy nowe ID i nowy produkt.
+5. Po COMMIT, ale przed ACK, wiadomość może zostać ponownie dostarczona. Znacznik `ProcessedCommands` chroni przed powtórnym INSERT.
+6. `/health` bada proces API, nie wszystkie zależności. Środowisko jest edukacyjne i nie jest projektem produkcyjnym.
+
+## 7. Dotychczasowe wyniki
+
+11.11.2026: przetestowano POST `accepted` → operacja `completed` → GET produktu `X-Cache: MISS` → `X-Cache: HIT` na wersji sprzed wydzielenia uprawnień. Po refaktoryzacji trzeba ponowić testy i potwierdzić zachowanie ról (wyniki nie są jeszcze zweryfikowane runtime).
+
+## 8. Pytania do omówienia
+
+Dlaczego API nie ma INSERT? Co daje oddzielenie `db-init` od Workera? Czy 202 oznacza COMMIT? Jak sprawdzić, że 404 nie pochodzi z cache? Dlaczego jawna transakcja musi być otoczona strategią EF Core? Jaki jest wpływ TTL i opóźnień kolejki na spójność odczytów?
