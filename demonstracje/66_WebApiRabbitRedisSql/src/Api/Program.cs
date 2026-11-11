@@ -12,6 +12,8 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using RabbitMQ.Client;
 using QueueCacheDemo.Api.Middleware;
+using QueueCacheDemo.Api.ErrorHandling;
+using QueueCacheDemo.Errors;
 using QueueCacheDemo.Contracts;
 using QueueCacheDemo.Data;
 using QueueCacheDemo.Entities;
@@ -41,6 +43,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
@@ -74,7 +78,7 @@ builder.Services.AddStackExchangeRedisCache(o => o.Configuration = builder.Confi
 
 var app = builder.Build();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
@@ -114,11 +118,11 @@ app.MapPost("/products", async (CreateProductRequest request, HttpContext http,
     if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 200
         || request.Price < 0 || request.Price > 9999999999999999m ||
         decimal.Round(request.Price, 2) != request.Price)
-        return Results.BadRequest(new { error = "Invalid name or price" });
+        throw new RequestValidationException("Name must be 1..200 characters and price must be nonnegative with at most two decimal places.");
 
     var key = http.Request.Headers["Idempotency-Key"].ToString();
     if (string.IsNullOrWhiteSpace(key) || key.Length > 128)
-        return Results.BadRequest(new { error = "Idempotency-Key header required (1..128 chars)" });
+        throw new RequestValidationException("Idempotency-Key header is required (1..128 characters).");
 
     var principal = http.User.FindFirstValue("sub");
     if (string.IsNullOrWhiteSpace(principal) || principal.Length > 128)
@@ -168,7 +172,8 @@ app.MapPost("/products", async (CreateProductRequest request, HttpContext http,
     {
         stored = await strategy.ExecuteAsync(PersistAsync);
     }
-    catch (DbUpdateException)
+    catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sql &&
+                                     sql.Number is 2601 or 2627)
     {
         // The unique principal/key constraint resolves concurrent duplicate POST requests.
         using var scope = scopes.CreateScope();
@@ -179,7 +184,7 @@ app.MapPost("/products", async (CreateProductRequest request, HttpContext http,
     }
 
     if (!string.Equals(stored.RequestHash, hash, StringComparison.Ordinal))
-        return Results.Conflict(new { error = "Idempotency-Key reused with different payload" });
+        throw new RequestConflictException("Idempotency-Key was already used with different request content.");
 
     return Results.Accepted($"/operations/{stored.Id}",
         new { operationId = stored.Id, productId = stored.ProductId, status = stored.Status.ToLowerInvariant() });
@@ -192,7 +197,8 @@ app.MapGet("/operations/{id:guid}", async (Guid id, HttpContext http, AppDbConte
         .Where(x => x.Id == id && x.PrincipalId == principal)
         .Select(x => new { operationId = x.Id, productId = x.ProductId, status = x.Status, errorCode = x.ErrorCode })
         .SingleOrDefaultAsync(ct);
-    return operation is null ? Results.NotFound() : Results.Ok(operation);
+    if (operation is null) throw new ResourceNotFoundException("Operation");
+    return Results.Ok(operation);
 }).RequireAuthorization();
 
 app.MapGet("/products/{id:guid}", async (Guid id, AppDbContext db, IDistributedCache cache,

@@ -62,3 +62,11 @@ Właściwe progi alarmowe, SLO i dashboardy muszą wynikać z testów obciążen
 - Wcześniejszy kontener RabbitMQ nie miał nazwanego wolumenu. Przed odtworzeniem kontenera sprawdź `products.create`, `products.retry` i `products.dead`; w razie potrzeby wyeksportuj wiadomości lub rozpatrz je ręcznie. Nowa wersja ma `rabbitmq_data` i stały nodename.
 - Skrypt SQL dodaje `PrincipalId` do produktów, tworzy nowe tabele Outbox i OperationStatuses, zapisuje wersję schematu oraz odbiera API wcześniejszy nadmiarowy SELECT z ProcessedCommands. Istniejące produkty otrzymują `PrincipalId='legacy'` i nie będą widoczne dla innych tokenów.
 - Nie wykonuj automatycznego rollbacku schematu w celu powrotu do starej wersji Workera. Najpierw zrób backup oraz sprawdź kompatybilność wiadomości w kolejce.
+
+## Diagnozowanie błędów po wdrożeniu modułu
+
+- HTTP 400 / 404 / 409: zwykle błąd żądania lub konflikt, nie wymagają automatycznego retry klienta.
+- HTTP 503: przejściowy problem z zależnością, odpowiedź zawiera Retry-After; użyj tego samego Idempotency-Key przy ponowieniu POST.
+- HTTP 500: błąd nieprzewidziany; wyszukaj traceId w logach, nie ujawniaj pełnego wyjątku użytkownikowi.
+- W Workerze filtruj logi według OperationId, FailureKind i Attempt; sprawdź products.retry, products.dead oraz status w OperationStatuses.
+- Testy poison message i SQL outage wykonuj w środowisku laboratoryjnym: DLQ i Pending mogą wymagać manualnej interwencji.

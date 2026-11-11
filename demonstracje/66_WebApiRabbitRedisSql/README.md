@@ -167,3 +167,44 @@ Patrz: [OPERATIONS.md](OPERATIONS.md) — scenariusze awarii, backup/restore, wd
 ### Stan weryfikacji
 
 Poprzednia wersja (11.11.2026) przeszła test `accepted → completed → MISS → HIT`. **Obecna refaktoryzacja wymaga powtórzenia build i smoke-testu**; nie należy interpretować wyniku poprzedniej wersji jako potwierdzenia tej implementacji.
+
+
+## Error Handling & Resilience
+
+### Centralna obsługa błędów API
+
+`Api/ErrorHandling/GlobalExceptionHandler.cs` implementuje `IExceptionHandler` i jest rejestrowany przez
+`AddExceptionHandler<GlobalExceptionHandler>()`, `AddProblemDetails()` oraz `UseExceptionHandler()`.
+Nie stosujemy już ręcznie pisanego middleware `ExceptionHandlingMiddleware`.
+
+| Źródło | Odpowiedź | Kod stabilny |
+|---|---|---|
+| RequestValidationException | HTTP 400 | VALIDATION_ERROR |
+| ResourceNotFoundException | HTTP 404 | NOT_FOUND |
+| RequestConflictException | HTTP 409 | CONFLICT |
+| DependencyUnavailableException / znany przejściowy wyjątek SQL / timeout | HTTP 503 + Retry-After: 5 | DEPENDENCY_UNAVAILABLE |
+| Nieznany wyjątek | HTTP 500 | UNEXPECTED_ERROR |
+| Brak uwierzytelnienia / uprawnień | HTTP 401/403 z middleware autoryzacji | — |
+
+Odpowiedzi błędów domenowych mają `application/problem+json`, `code` i `traceId`. Serwer rejestruje nieobsłużone wyjątki w logach; klient nie otrzymuje stack trace ani connection string. Przerwane przez klienta żądania są wyłączone z prób pisania odpowiedzi błędu.
+
+### Worker — klasyfikacja zamiast ślepego retry
+
+`Shared/Errors/FailureClassifier.cs` zwraca `Permanent` lub `Transient`:
+
+- **Permanent:** niepoprawny JSON/kontrakt polecenia, błędny identyfikator właściciela, trwale niepoprawne dane; komunikat trafia bez zwłoki do DLQ.
+- **Transient:** znane błędy przejściowe SQL (timeout, deadlock, failover), I/O i niedostępność zależności, oraz nieznane wyjątki (ostrożnie: maks. 3 ponowienia). Retry używa kolejki `products.retry` z TTL 5 s.
+- **Terminal:** po wyczerpaniu liczby ponowień operacja jest oznaczana `Failed`, jeżeli SQL jest osiągalny, i wiadomość trafia do `products.dead`. Jeśli SQL jest niedostępny, status może zostać `Pending` — wymaga to alertu na wiek operacji.
+- **COMMIT / ACK:** po zatwierdzeniu SQL deduplikacja oparta na `ProcessedCommands` zapobiega ponownemu INSERT w przypadku ponownej dostawy.
+
+`ApplicationExceptionBase` i typy wyjątków są w projekcie `Shared/Errors`, dzięki czemu ten sam model błędów jest dostępny dla API i Workera.
+
+### Weryfikacja
+
+```powershell
+dotnet test .\tests\QueueCacheDemo.Tests\QueueCacheDemo.Tests.csproj
+docker compose up -d --build api worker
+.\scripts\Smoke-Test.ps1
+```
+
+Smoke test sprawdza dodatkowo odpowiedzi **400, 409, 404 i 401**. Testy xUnit weryfikują klasyfikację błędnych poleceń i timeoutów. Zachowanie w trakcie awarii SQL i brokera wymaga osobnych scenariuszy awaryjnych.

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using QueueCacheDemo.Contracts;
 using QueueCacheDemo.Data;
 using QueueCacheDemo.Entities;
+using QueueCacheDemo.Errors;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -165,8 +166,14 @@ public sealed class Consumer(
         try
         {
             var command = JsonSerializer.Deserialize<CreateProduct>(ea.Body.Span)
-                          ?? throw new InvalidOperationException("Empty command");
+                          ?? throw new InvalidCommandException("Empty command");
             operationId = command.OperationId;
+            if (command.OperationId == Guid.Empty || command.ProductId == Guid.Empty ||
+                string.IsNullOrWhiteSpace(command.PrincipalId) || command.PrincipalId.Length > 128 ||
+                string.IsNullOrWhiteSpace(command.Name) || command.Name.Length > 200 ||
+                command.Price < 0 || command.Price > 9999999999999999m ||
+                decimal.Round(command.Price, 2) != command.Price)
+                throw new InvalidCommandException("CreateProduct command validation failed");
             using var activity = DemoTelemetry.Activity.StartActivity("HandleCreateProduct",
                 ActivityKind.Consumer, command.TraceParent);
 
@@ -184,7 +191,7 @@ public sealed class Consumer(
                     var operation = await db.OperationStatuses
                         .SingleAsync(x => x.Id == command.OperationId, ct);
                     if (!string.Equals(operation.PrincipalId, command.PrincipalId, StringComparison.Ordinal))
-                        throw new InvalidOperationException("Principal mismatch");
+                        throw new InvalidCommandException("Command principal does not match operation owner");
                     db.Products.Add(new Product
                     {
                         Id = command.ProductId,
@@ -230,8 +237,13 @@ public sealed class Consumer(
                 catch (Exception) { attempts = 0; }
             }
 
-            logger.LogError(ex, "Processing {OperationId} failed attempt {Attempt}", operationId, attempts + 1);
-            if (attempts < 3)
+            var kind = FailureClassifier.Classify(ex);
+            logger.LogError(ex,
+                "Processing {OperationId} failed: {FailureKind}, attempt {Attempt}",
+                operationId, kind, attempts + 1);
+            // Invalid JSON, invalid commands and permanent SQL faults go directly to DLQ.
+            // Transport/SQL transients are retried up to three times with delay queue.
+            if (kind == FailureKind.Transient && attempts < 3)
             {
                 try
                 {
@@ -254,7 +266,8 @@ public sealed class Consumer(
                 }
             }
 
-            // Mark failure when SQL is reachable; do not change an already completed operation.
+            // Mark terminal failure when SQL is reachable; do not overwrite Completed.
+            // An unreachable SQL instance may leave Pending; alert on old Pending rows.
             if (operationId.HasValue)
             {
                 try
@@ -264,7 +277,7 @@ public sealed class Consumer(
                     await db.OperationStatuses
                         .Where(x => x.Id == operationId.Value && x.Status != "Completed")
                         .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Failed")
-                            .SetProperty(x => x.ErrorCode, "PROCESSING_FAILED")
+                            .SetProperty(x => x.ErrorCode, kind == FailureKind.Permanent ? "PERMANENT_ERROR" : "RETRIES_EXHAUSTED")
                             .SetProperty(x => x.UpdatedAtUtc, DateTime.UtcNow), ct);
                 }
                 catch (Exception updateError)

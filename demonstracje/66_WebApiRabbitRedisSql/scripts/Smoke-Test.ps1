@@ -30,3 +30,16 @@ if ($r2.Headers["X-Cache"] -notcontains "HIT") { throw "Expected cache hit" }
 $forbidden = Invoke-WebRequest $url -Headers $otherHeaders -SkipHttpErrorCheck
 if ($forbidden.StatusCode -ne 404) { throw "Cross-principal product access was not denied" }
 Write-Host "PASS: accepted -> idempotent -> completed -> MISS -> HIT -> tenant isolation" -ForegroundColor Green
+
+
+$bad = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = ""; price = -1 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
+if ($bad.StatusCode -ne 400) { throw "Expected HTTP 400 validation error" }
+$badProblem = $bad.Content | ConvertFrom-Json
+if ($badProblem.code -ne "VALIDATION_ERROR" -or -not $badProblem.traceId) { throw "Validation ProblemDetails contract failed" }
+$conflict = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = "DIFFERENT"; price = 1.00 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
+if ($conflict.StatusCode -ne 409) { throw "Expected HTTP 409 idempotency conflict" }
+$unknown = Invoke-WebRequest "$BaseUrl/operations/$([guid]::NewGuid())" -Headers $headers -SkipHttpErrorCheck
+if ($unknown.StatusCode -ne 404) { throw "Expected HTTP 404 missing operation" }
+$unauthorized = Invoke-WebRequest "$BaseUrl/operations/$($accepted.operationId)" -SkipHttpErrorCheck
+if ($unauthorized.StatusCode -ne 401) { throw "Expected HTTP 401 unauthenticated" }
+Write-Host "PASS: error contracts 400 / 409 / 404 / 401" -ForegroundColor Green
