@@ -41,6 +41,21 @@ public sealed class FailureClassifierTests
         Assert.False(FailureClassifier.IsTransientSqlDependency(
             new InvalidOperationException("other failure", new TimeoutException())));
 
+    [Theory]
+    [InlineData(11001)]
+    [InlineData(10061)]
+    [InlineData(-2)]
+    [InlineData(1205)]
+    public void SqlConnectivityErrorsAreTransient(int number) =>
+        Assert.True(FailureClassifier.IsTransientSqlErrorNumber(number));
+
+    [Theory]
+    [InlineData(2627)]
+    [InlineData(2601)]
+    [InlineData(207)]
+    public void SqlConstraintAndSchemaErrorsAreNotTransient(int number) =>
+        Assert.False(FailureClassifier.IsTransientSqlErrorNumber(number));
+
     [Fact]
     public void ValidationErrorIsPermanent() =>
         Assert.Equal(FailureKind.Permanent,
