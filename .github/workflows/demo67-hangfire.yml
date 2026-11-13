@@ -1,0 +1,32 @@
+name: Demo 67 - Hangfire SQL Server
+
+on:
+  push:
+    paths:
+      - 'demonstracje/67_HangfireSqlServer/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - '.github/workflows/demo67-hangfire.yml'
+  pull_request:
+    paths:
+      - 'demonstracje/67_HangfireSqlServer/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - '.github/workflows/demo67-hangfire.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Shared
+        run: dotnet build demonstracje/67_HangfireSqlServer/src/Shared/Shared.csproj -c Release
+      - name: Build API
+        run: dotnet build demonstracje/67_HangfireSqlServer/src/Api/Api.csproj -c Release
+      - name: Build Worker
+        run: dotnet build demonstracje/67_HangfireSqlServer/src/Worker/Worker.csproj -c Release
