@@ -13,10 +13,21 @@ try {
     # SQL validation uses the SA password already present INSIDE the SQL lab container.
     # Never print secrets or pass passwords through the host PowerShell command line.
     function Invoke-LabSql {
-        param([Parameter(Mandatory)][string]$Query)
-        $output = @(
-            docker compose exec -T sql /bin/bash -c 'exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -d WwsiQueueCache -b -h -1 -y 0 -w 8192 -Q "$1"' -- $Query
+        param(
+            [Parameter(Mandatory)][string]$Query,
+            [switch]$FullText
         )
+        # sqlcmd rejects -h with -y 0; -W is also incompatible with -y.
+        # Compact counts use -h -1/-W; Outbox nvarchar(max) uses -y 0 without them.
+        if ($FullText) {
+            $output = @(
+                docker compose exec -T sql /bin/bash -c 'exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -d WwsiQueueCache -b -y 0 -w 8192 -Q "$1"' -- $Query
+            )
+        } else {
+            $output = @(
+                docker compose exec -T sql /bin/bash -c 'exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -d WwsiQueueCache -b -h -1 -W -w 8192 -Q "$1"' -- $Query
+            )
+        }
         if ($LASTEXITCODE -ne 0) { throw "SQL command failed" }
         return ($output -join [Environment]::NewLine).Trim()
     }
@@ -88,8 +99,12 @@ try {
 
     # Read the *actual durable command* from SQL Outbox, not a reconstructed JSON.
     $payloadQuery = "SET NOCOUNT ON; SELECT Payload FROM dbo.OutboxMessages WHERE OperationId = '$operationId';"
-    $payload = Invoke-LabSql $payloadQuery
-    if (-not $payload.StartsWith("{")) { throw "Outbox payload missing or not JSON" }
+    $payloadOutput = Invoke-LabSql -Query $payloadQuery -FullText
+    # With -y 0 sqlcmd emits its column header; find the actual single-line JSON.
+    $payload = @($payloadOutput -split "\r?\n" | ForEach-Object { $_.Trim() } |
+        Where-Object { $_.StartsWith("{") -and $_.EndsWith("}") } | Select-Object -First 1)
+    if ($payload.Count -ne 1) { throw "Outbox payload missing or not a complete JSON line" }
+    $payload = [string]$payload[0]
     $command = $payload | ConvertFrom-Json
     if ([guid]$command.OperationId -ne $operationId -or [guid]$command.ProductId -ne $productId) {
         throw "Outbox payload identifiers differ from HTTP response"
