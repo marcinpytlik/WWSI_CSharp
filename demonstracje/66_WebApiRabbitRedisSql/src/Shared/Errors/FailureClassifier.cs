@@ -27,7 +27,7 @@ public static class FailureClassifier
             foreach (SqlError item in sql.Errors)
                 if (item.Number is -2 or 1205 or 4060 or 40197 or 40501 or 40613
                     or 10928 or 10929 or 49918 or 49919 or 49920
-                    or 2 or 26 or 40 or 53 or 64 or 233 or 10053 or 10054 or 10060)
+                    or 0 or 2 or 26 or 40 or 53 or 64 or 233 or 10053 or 10054 or 10060 or 10061)
                     return FailureKind.Transient;
 
             return FailureKind.Permanent;
@@ -40,7 +40,32 @@ public static class FailureClassifier
             && retry.InnerException is not null)
             return Classify(retry.InnerException);
 
+        // DbConnection/EF may wrap provider failures in InvalidOperationException.
+        // Unwrap only when the inner chain contains a known SQL/provider failure.
+        if (error is InvalidOperationException && error.InnerException is not null
+            && ContainsSqlDependencyFailure(error.InnerException))
+            return Classify(FindSqlDependencyFailure(error.InnerException)!);
+
         // Unexpected errors deserve bounded retries, then DLQ for investigation.
         return FailureKind.Transient;
     }
+    // API-only mapping: don't turn arbitrary CLR exceptions into HTTP 503.
+    public static bool IsTransientSqlDependency(Exception error)
+    {
+        var cause = FindSqlDependencyFailure(error);
+        return cause is not null && Classify(cause) == FailureKind.Transient;
+    }
+
+    private static bool ContainsSqlDependencyFailure(Exception error)
+        => FindSqlDependencyFailure(error) is not null;
+
+    private static Exception? FindSqlDependencyFailure(Exception error)
+    {
+        for (Exception? current = error; current is not null; current = current.InnerException)
+        {
+            if (current is SqlException) return current;
+        }
+        return null;
+    }
+
 }

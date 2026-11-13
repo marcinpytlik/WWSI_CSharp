@@ -36,6 +36,11 @@ public sealed class GlobalExceptionHandler(
             Microsoft.Data.SqlClient.SqlException sql
                 when FailureClassifier.Classify(sql) == FailureKind.Transient
                     => StatusCodes.Status503ServiceUnavailable,
+            // SQL connection faults may arrive wrapped in InvalidOperationException
+            // when EF Core opens a connection or starts its execution strategy.
+            InvalidOperationException wrapped
+                when FailureClassifier.IsTransientSqlDependency(wrapped)
+                    => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status500InternalServerError
         };
         var traceId = Activity.Current?.Id ?? context.TraceIdentifier;

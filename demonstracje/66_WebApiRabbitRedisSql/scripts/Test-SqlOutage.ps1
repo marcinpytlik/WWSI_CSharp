@@ -25,7 +25,15 @@ try {
     $post = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body $body -ContentType "application/json" -SkipHttpErrorCheck -TimeoutSec $ClientTimeoutSeconds
     $sw.Stop()
     Write-Host "POST: HTTP $($post.StatusCode) in $([math]::Round($sw.Elapsed.TotalSeconds,2)) s"
-    if ($post.StatusCode -ne 503) { throw "Expected POST 503; if 202 inspect idempotency key and data before any retry" }
+    if ($post.StatusCode -ne 503) {
+        $bodyText = if ($post.Content -is [byte[]]) {
+            [Text.Encoding]::UTF8.GetString($post.Content)
+        } else { [string]$post.Content }
+        Write-Warning "Unexpected POST HTTP $($post.StatusCode). Body: $bodyText"
+        Write-Warning "API exception log (last 80 lines):"
+        docker compose logs --tail=80 api
+        throw "Expected POST 503; inspect returned ProblemDetails and API exception log"
+    }
     Write-Host "PASS: SQL outage yields 503 for readiness and POST" -ForegroundColor Green
 }
 catch { $failed = $_; Write-Warning $_.Exception.Message }

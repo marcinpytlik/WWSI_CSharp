@@ -32,6 +32,16 @@ public sealed class FailureClassifierTests
                     "retry exhausted", new TimeoutException("timeout"))));
 
     [Fact]
+    public void NonSqlInvalidOperationIsNotAnUnavailableDependency() =>
+        Assert.False(FailureClassifier.IsTransientSqlDependency(
+            new InvalidOperationException("programming error")));
+
+    [Fact]
+    public void WrappedTimeoutWithoutSqlIsNotAClassifiedSqlDependency() =>
+        Assert.False(FailureClassifier.IsTransientSqlDependency(
+            new InvalidOperationException("other failure", new TimeoutException())));
+
+    [Fact]
     public void ValidationErrorIsPermanent() =>
         Assert.Equal(FailureKind.Permanent,
             FailureClassifier.Classify(new RequestValidationException("bad input")));
