@@ -322,3 +322,29 @@ Skrypt nie restartuje usług, nie usuwa komunikatów ani wolumenów.
 Wymaga lokalnego RabbitMQ Management na porcie 15672 i kontenera SQL
 z `sqlcmd`. Korzystaj wyłącznie z wydzielonego
 środowiska laboratoryjnego.
+
+## Eksperyment 8: Worker crash between SQL COMMIT and RabbitMQ ACK
+
+Test tylko dla wydzielonego środowiska Docker. Tryb laboratoryjny
+`Chaos__EnablePostCommitPause=true` działa wyłącznie dla produktów
+`CrashProbe-*`. Po `CommitAsync` Worker zapisuje
+`POST_COMMIT_PRE_ACK_PAUSE` i czeka (maks. 5 min) bez ACK.
+`Test-CommitAckCrash.ps1` potwierdza trwałe dane w SQL,
+wykonuje **SIGKILL tylko kontenera Worker**, uruchamia go ponownie
+z wyłączonym trybem testowym i czeka na RabbitMQ `redelivered=True`.
+Sprawdza, że `Products` = 1, `ProcessedCommands` = 1,
+status `Completed` = 1 oraz że Worker ponownie zakończył
+obsługę i potwierdził wiadomość.
+
+```powershell
+git pull
+dotnet test .\tests\QueueCacheDemo.Tests\QueueCacheDemo.Tests.csproj
+docker compose up -d --build api worker
+.\scripts\Test-CommitAckCrash.ps1
+.\scripts\Smoke-Test.ps1
+```
+
+Skrypt w `finally` przywraca poprzednie ustawienie zmiennej i,
+gdy trzeba, odtwarza Workera. Nie usuwa wolumenów ani bazy SQL.
+Scenariusz zakłada jednego testowego konsumenta RabbitMQ, brak
+równoległego restartowania Workera przez inne zadania i środowisko labowe.

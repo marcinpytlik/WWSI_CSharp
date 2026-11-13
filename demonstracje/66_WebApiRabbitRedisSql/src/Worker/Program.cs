@@ -172,6 +172,9 @@ public sealed class Consumer(
             var command = JsonSerializer.Deserialize<CreateProduct>(ea.Body.Span)
                           ?? throw new InvalidCommandException("Empty command");
             operationId = command.OperationId;
+            if (command.Name.StartsWith("CrashProbe-", StringComparison.Ordinal))
+                logger.LogInformation("Crash probe delivery {OperationId} redelivered={Redelivered}",
+                    command.OperationId, ea.Redelivered);
             if (command.OperationId == Guid.Empty || command.ProductId == Guid.Empty ||
                 string.IsNullOrWhiteSpace(command.PrincipalId) || command.PrincipalId.Length > 128 ||
                 string.IsNullOrWhiteSpace(command.Name) || command.Name.Length > 200 ||
@@ -235,6 +238,15 @@ public sealed class Consumer(
                 }
                 await tx.CommitAsync(ct);
             });
+
+            // LAB ONLY: deliberately pause AFTER durable SQL COMMIT and BEFORE RabbitMQ ACK.
+            // Script Test-CommitAckCrash.ps1 SIGKILLs this Worker while the message is unacked.
+            if (config.GetValue<bool>("Chaos:EnablePostCommitPause")
+                && command.Name.StartsWith("CrashProbe-", StringComparison.Ordinal))
+            {
+                logger.LogWarning("POST_COMMIT_PRE_ACK_PAUSE {OperationId}", command.OperationId);
+                await Task.Delay(TimeSpan.FromMinutes(5), ct);
+            }
 
             // Cache is best effort, SQL stays the system of record.
             using (var scope = scopes.CreateScope())
