@@ -293,3 +293,32 @@ i liczniku DLQ, a następnie odtwarza konfigurację Workera w `finally`.
 Nie usuwa wiadomości z DLQ ani wolumenów, zatem kolejne uruchomienia
 zwiększają rozmiar `products.dead`. Zakładamy środowisko
 laboratoryjne bez innych równoległych producentów wiadomości.
+
+## Eksperyment 7: Idempotent Consumer — wielokrotne dostarczenie
+
+Po zakończeniu oryginalnego POST i COMMIT w SQL Server uruchamiamy
+`Test-IdempotentConsumer.ps1` na wydzielonym środowisku demo.
+Skrypt odczytuje z `dbo.OutboxMessages` dokładny, pierwotny
+`Payload` (SQL `sa` działa wyłącznie wewnątrz kontenera)
+i publikuje go **dwa razy** przez RabbitMQ Management API do
+`products.create`. Nie symuluje żądania HTTP —
+testuje wielokrotną **dostawę do konsumenta**.
+
+Asercje po każdej dostawie: dla wskazanych GUID istnieje dokładnie:
+jeden `dbo.Products`, jeden `dbo.ProcessedCommands`
+i jedna operacja `dbo.OperationStatuses` w stanie
+`Completed`. Weryfikujemy też odnotowane przetworzenia
+wiadomości w logach Workera. Ten eksperyment weryfikuje deduplikację
+**po COMMIT**, nie testuje jeszcze awarii dokładnie między COMMIT i ACK.
+
+```powershell
+git pull
+docker compose up -d --build api worker
+.\scripts\Test-IdempotentConsumer.ps1
+.\scripts\Smoke-Test.ps1
+```
+
+Skrypt nie restartuje usług, nie usuwa komunikatów ani wolumenów.
+Wymaga lokalnego RabbitMQ Management na porcie 15672 i kontenera SQL
+z `sqlcmd`. Korzystaj wyłącznie z wydzielonego
+środowiska laboratoryjnego.
