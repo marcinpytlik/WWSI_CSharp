@@ -1,5 +1,12 @@
 # 66 — Web API → SQL Outbox → RabbitMQ → Worker → SQL Server + Redis
 
+## Podręcznik do samodzielnego wykonania 9 eksperymentów
+
+**Rozpocznij tutaj:** [LAB-GUIDE.md](LAB-GUIDE.md) — pełna instalacja, polecenia PowerShell, architektura, testy 1–9, oczekiwane wyniki, zapytania DBA i odzyskiwanie po awariach.
+
+Przydatne załączniki: [wyniki referencyjne z 13.11.2026](RESULTS-2026-11-13.md), [pusta karta pomiarów](LAB-RESULTS-TEMPLATE.md) oraz [runbook operacyjny](OPERATIONS.md).
+
+
 **WWSI / .NET 10 / EF Core 10 / SQL Server 2022 / RabbitMQ / Redis**
 
 Demonstracja architektury z **eventual consistency**, trwałym SQL Outbox, idempotencją HTTP oraz Workera, ograniczonym retry i Dead Letter Queue, bezpieczeństwem API, minimalnymi uprawnieniami SQL i OpenTelemetry.
