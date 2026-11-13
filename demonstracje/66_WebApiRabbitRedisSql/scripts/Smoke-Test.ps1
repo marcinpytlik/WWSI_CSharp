@@ -3,6 +3,16 @@ param(
     [int]$TimeoutSeconds = 90
 )
 $ErrorActionPreference = "Stop"
+# Invoke-WebRequest may expose an HTTP response body as byte[] on some PowerShell versions.
+# Always decode it before parsing JSON; otherwise ConvertFrom-Json receives System.Byte[].
+function Get-ResponseText {
+    param([Parameter(Mandatory)] $Response)
+    if ($Response.Content -is [byte[]]) {
+        return [System.Text.Encoding]::UTF8.GetString($Response.Content)
+    }
+    return [string]$Response.Content
+}
+
 $token = & (Join-Path $PSScriptRoot "New-DemoJwt.ps1")
 $headers = @{ Authorization = "Bearer $token"; "Idempotency-Key" = [guid]::NewGuid().ToString() }
 $body = @{ name = "WWSI production-path smoke"; price = 129.99 } | ConvertTo-Json
@@ -34,12 +44,13 @@ Write-Host "PASS: accepted -> idempotent -> completed -> MISS -> HIT -> tenant i
 
 $bad = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = ""; price = -1 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
 if ($bad.StatusCode -ne 400) { throw "Expected HTTP 400 validation error" }
-$badProblem = $bad.Content | ConvertFrom-Json
+$badText = Get-ResponseText $bad
+$badProblem = $badText | ConvertFrom-Json
 if ($badProblem.code -ne "VALIDATION_ERROR" -or -not $badProblem.traceId) {
     # A 400 can also originate from framework parsing/binding before our handler.
     # Show the actual response, so we do not accidentally silence a contract regression.
-    Write-Host ("Validation response: HTTP {0}, Content-Type: {1}" -f $bad.StatusCode, $bad.Headers["Content-Type"]) -ForegroundColor Yellow
-    Write-Host ("Validation body: {0}" -f $bad.Content) -ForegroundColor Yellow
+    Write-Host ("Validation response: HTTP {0}, Content-Type: {1}" -f $bad.StatusCode, ($bad.Headers["Content-Type"] -join ", ")) -ForegroundColor Yellow
+    Write-Host ("Validation body: {0}" -f $badText) -ForegroundColor Yellow
     throw ("Validation ProblemDetails contract failed (actual code='{0}', traceId='{1}')" -f $badProblem.code, $badProblem.traceId)
 }
 $conflict = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = "DIFFERENT"; price = 1.00 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
