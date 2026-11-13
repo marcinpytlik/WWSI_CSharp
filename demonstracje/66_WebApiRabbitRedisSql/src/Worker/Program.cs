@@ -163,6 +163,10 @@ public sealed class Consumer(
     private async Task HandleAsync(IChannel channel, BasicDeliverEventArgs ea, CancellationToken ct)
     {
         Guid? operationId = null;
+        var attempt = RetryAttemptParser.Parse(
+            ea.BasicProperties.Headers is not null &&
+            ea.BasicProperties.Headers.TryGetValue("x-demo-attempt", out var headerValue)
+                ? headerValue : null);
         try
         {
             var command = JsonSerializer.Deserialize<CreateProduct>(ea.Body.Span)
@@ -176,6 +180,16 @@ public sealed class Consumer(
                 throw new InvalidCommandException("CreateProduct command validation failed");
             using var activity = DemoTelemetry.Activity.StartActivity("HandleCreateProduct",
                 ActivityKind.Consumer, command.TraceParent);
+
+            // Opt-in fault injection for Test-Retry.ps1 only; disabled in normal deployments.
+            // The original delivery fails once; TTL retry with x-demo-attempt=1 succeeds.
+            if (config.GetValue<bool>("Chaos:EnableRetryProbe")
+                && command.Name.StartsWith("RetryProbe-", StringComparison.Ordinal)
+                && attempt == 0)
+            {
+                logger.LogWarning("Retry probe: transient failure for {OperationId}", command.OperationId);
+                throw new TimeoutException("Injected one-time transient failure (lab retry probe)");
+            }
 
             using var strategyScope = scopes.CreateScope();
             var strategyDb = strategyScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -230,20 +244,13 @@ public sealed class Consumer(
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            var attempts = 0;
-            if (ea.BasicProperties.Headers?.TryGetValue("x-demo-attempt", out var value) == true)
-            {
-                try { attempts = Convert.ToInt32(value); }
-                catch (Exception) { attempts = 0; }
-            }
-
             var kind = FailureClassifier.Classify(ex);
             logger.LogError(ex,
                 "Processing {OperationId} failed: {FailureKind}, attempt {Attempt}",
-                operationId, kind, attempts + 1);
+                operationId, kind, attempt + 1);
             // Invalid JSON, invalid commands and permanent SQL faults go directly to DLQ.
             // Transport/SQL transients are retried up to three times with delay queue.
-            if (kind == FailureKind.Transient && attempts < 3)
+            if (kind == FailureKind.Transient && attempt < 3)
             {
                 try
                 {
@@ -252,11 +259,13 @@ public sealed class Consumer(
                         {
                             Persistent = true,
                             MessageId = operationId?.ToString(),
-                            Headers = new Dictionary<string, object?> { ["x-demo-attempt"] = attempts + 1 }
+                            Headers = new Dictionary<string, object?> { ["x-demo-attempt"] = attempt + 1 }
                         },
                         body: ea.Body, cancellationToken: ct);
                     await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
                     DemoTelemetry.Retried.Add(1);
+                    logger.LogInformation("Scheduled retry {OperationId} attempt {Attempt} via products.retry",
+                        operationId, attempt + 1);
                     return;
                 }
                 catch (Exception publishError)

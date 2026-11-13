@@ -88,6 +88,7 @@ services:
       Rabbit__Host: "rabbitmq"
       Rabbit__User: "${RABBIT_USER:?Set RABBIT_USER in .env}"
       Rabbit__Password: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
+      Chaos__EnableRetryProbe: "${CHAOS_ENABLE_RETRY_PROBE:-false}"
       OTEL_SERVICE_NAME: "wwsi-queue-worker"
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
     depends_on:

@@ -234,3 +234,29 @@ Laboratoryjny test awarii (czasowo zatrzymuje kontener SQL):
 ```
 Skrypt uruchamia SQL ponownie w bloku finally. Nie usuwa wolumenów.
 Uruchamiaj wyłącznie na dedykowanym środowisku demonstracyjnym.
+
+## Eksperyment 5: retry wiadomości RabbitMQ (błąd przejściowy)
+
+Na **wydzielonym laboratorium** `Test-Retry.ps1` włącza
+tymczasowo `Chaos__EnableRetryProbe=true` wyłącznie dla Workera.
+Gdy nazwa produktu zaczyna się od `RetryProbe-`, Worker zgłasza
+kontrolowany `TimeoutException` tylko podczas pierwszej dostawy
+(`x-demo-attempt=0`). SQL Outbox pozostaje bez zmian.
+
+Worker publikuje wiadomość na `products.retry`, gdzie TTL = 5 sekund,
+a następnie RabbitMQ przekierowuje ją do `products.create` z
+nagłówkiem `x-demo-attempt=1`. Ponowione przetwarzanie powinno zakończyć się
+stanem `Completed`. Skrypt sprawdza status i logi:
+wstrzyknięcie błędu, zaplanowany retry oraz ukończenie operacji.
+
+```powershell
+dotnet test .\tests\QueueCacheDemo.Tests\QueueCacheDemo.Tests.csproj
+docker compose up -d --build api worker
+.\scripts\Test-Retry.ps1
+.\scripts\Smoke-Test.ps1
+```
+
+Skrypt przywraca poprzednie ustawienie zmiennej środowiskowej i tworzy
+kontener Worker ponownie w bloku `finally`, nawet gdy test się nie powiedzie.
+Bez `CHAOS_ENABLE_RETRY_PROBE=true` celowe błędy są **wyłączone**.
+Nie używaj tego testu na środowisku współdzielonym lub produkcyjnym.
