@@ -191,6 +191,16 @@ public sealed class Consumer(
                 throw new TimeoutException("Injected one-time transient failure (lab retry probe)");
             }
 
+            // Opt-in only: simulate an always-failing transient dependency for the DLQ lab.
+            // Failures occur before SQL transaction; 0,1,2,3 are four deliveries in total.
+            if (config.GetValue<bool>("Chaos:EnableDlqProbe")
+                && command.Name.StartsWith("DeadLetterProbe-", StringComparison.Ordinal))
+            {
+                logger.LogWarning("DLQ probe: transient failure for {OperationId} delivery {Delivery}",
+                    command.OperationId, attempt + 1);
+                throw new TimeoutException("Injected persistent transient failure (lab DLQ probe)");
+            }
+
             using var strategyScope = scopes.CreateScope();
             var strategyDb = strategyScope.ServiceProvider.GetRequiredService<AppDbContext>();
             var strategy = strategyDb.Database.CreateExecutionStrategy();

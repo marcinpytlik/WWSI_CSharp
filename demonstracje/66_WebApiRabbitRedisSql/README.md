@@ -260,3 +260,36 @@ Skrypt przywraca poprzednie ustawienie zmiennej środowiskowej i tworzy
 kontener Worker ponownie w bloku `finally`, nawet gdy test się nie powiedzie.
 Bez `CHAOS_ENABLE_RETRY_PROBE=true` celowe błędy są **wyłączone**.
 Nie używaj tego testu na środowisku współdzielonym lub produkcyjnym.
+
+## Eksperyment 6: Dead Letter Queue — dwa scenariusze
+
+Uruchom tylko na **wydzielonym laboratorium**:
+
+```powershell
+git pull
+dotnet test .\tests\QueueCacheDemo.Tests\QueueCacheDemo.Tests.csproj
+docker compose up -d --build api worker
+.\scripts\Test-Dlq.ps1
+.\scripts\Smoke-Test.ps1
+```
+
+
+`Test-Dlq.ps1` sprawdza dwa przypadki:
+
+1. Niepoprawny JSON publikuje bezpośrednio do `products.create`
+   przez RabbitMQ Management HTTP API, po czym weryfikuje wzrost
+   liczby wiadomości w `products.dead`. Błąd jest trwały
+   i **nie powinien** przechodzić retry.
+2. Poprawny POST używa prefiksu `DeadLetterProbe-`, który przy
+   `Chaos__EnableDlqProbe=true` włącza kontrolowany błąd przejściowy
+   przy **każdej** dostawie Workera. Oczekujemy 3 publikacji do
+   `products.retry` (TTL 5 s), czterech dostaw,
+   statusu `Failed` z kodem `RETRIES_EXHAUSTED`
+   oraz drugiej wiadomości w `products.dead`.
+
+Skrypt czyta konto RabbitMQ z lokalnego `.env`
+(bez wypisywania hasła), wykonuje asercje na statusach/logach
+i liczniku DLQ, a następnie odtwarza konfigurację Workera w `finally`.
+Nie usuwa wiadomości z DLQ ani wolumenów, zatem kolejne uruchomienia
+zwiększają rozmiar `products.dead`. Zakładamy środowisko
+laboratoryjne bez innych równoległych producentów wiadomości.
