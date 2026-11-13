@@ -35,7 +35,13 @@ Write-Host "PASS: accepted -> idempotent -> completed -> MISS -> HIT -> tenant i
 $bad = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = ""; price = -1 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
 if ($bad.StatusCode -ne 400) { throw "Expected HTTP 400 validation error" }
 $badProblem = $bad.Content | ConvertFrom-Json
-if ($badProblem.code -ne "VALIDATION_ERROR" -or -not $badProblem.traceId) { throw "Validation ProblemDetails contract failed" }
+if ($badProblem.code -ne "VALIDATION_ERROR" -or -not $badProblem.traceId) {
+    # A 400 can also originate from framework parsing/binding before our handler.
+    # Show the actual response, so we do not accidentally silence a contract regression.
+    Write-Host ("Validation response: HTTP {0}, Content-Type: {1}" -f $bad.StatusCode, $bad.Headers["Content-Type"]) -ForegroundColor Yellow
+    Write-Host ("Validation body: {0}" -f $bad.Content) -ForegroundColor Yellow
+    throw ("Validation ProblemDetails contract failed (actual code='{0}', traceId='{1}')" -f $badProblem.code, $badProblem.traceId)
+}
 $conflict = Invoke-WebRequest "$BaseUrl/products" -Method Post -Headers $headers -Body (@{ name = "DIFFERENT"; price = 1.00 } | ConvertTo-Json) -ContentType "application/json" -SkipHttpErrorCheck
 if ($conflict.StatusCode -ne 409) { throw "Expected HTTP 409 idempotency conflict" }
 $unknown = Invoke-WebRequest "$BaseUrl/operations/$([guid]::NewGuid())" -Headers $headers -SkipHttpErrorCheck
