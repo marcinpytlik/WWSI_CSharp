@@ -25,6 +25,13 @@ public sealed class FailureClassifierTests
             FailureClassifier.Classify(new DependencyUnavailableException("SQL Server")));
 
     [Fact]
+    public void ExhaustedRetryWithTimeoutIsTransient() =>
+        Assert.Equal(FailureKind.Transient,
+            FailureClassifier.Classify(
+                new Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException(
+                    "retry exhausted", new TimeoutException("timeout"))));
+
+    [Fact]
     public void ValidationErrorIsPermanent() =>
         Assert.Equal(FailureKind.Permanent,
             FailureClassifier.Classify(new RequestValidationException("bad input")));

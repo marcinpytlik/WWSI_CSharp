@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Data.SqlClient;
 using System.Globalization;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
@@ -72,8 +73,23 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             }));
 });
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlServer(builder.Configuration.GetConnectionString("Sql"), sql => sql.EnableRetryOnFailure()));
+// API only: small connection/retry budgets. These do not truncate an in-flight SQL COMMIT.
+var apiSql = new SqlConnectionStringBuilder(
+    builder.Configuration.GetConnectionString("Sql")
+    ?? throw new InvalidOperationException("ConnectionStrings:Sql required"))
+{
+    ConnectTimeout = builder.Configuration.GetValue("Resilience:SqlConnectTimeoutSeconds", 3)
+}.ConnectionString;
+var sqlCommandTimeout = builder.Configuration.GetValue("Resilience:SqlCommandTimeoutSeconds", 10);
+var sqlRetryCount = builder.Configuration.GetValue("Resilience:SqlRetryCount", 1);
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(apiSql, sql =>
+{
+    sql.CommandTimeout(sqlCommandTimeout);
+    sql.EnableRetryOnFailure(
+        maxRetryCount: sqlRetryCount,
+        maxRetryDelay: TimeSpan.FromSeconds(2),
+        errorNumbersToAdd: null);
+}));
 builder.Services.AddStackExchangeRedisCache(o => o.Configuration = builder.Configuration.GetConnectionString("Redis")!);
 
 var app = builder.Build();
@@ -84,24 +100,40 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "alive" })).AllowAnonymous();
-app.MapGet("/health/ready", async (AppDbContext db, IDistributedCache cache,
-    IConfiguration cfg, CancellationToken ct) =>
+app.MapGet("/health/ready", async (IDistributedCache cache,
+    IConfiguration cfg, HttpContext http) =>
 {
+    // A health probe must not inherit EF Core's business-operation retry policy.
+    // Its own short SQL connection and deadline keep liveness separate from readiness.
+    var budgetSeconds = cfg.GetValue("Resilience:ReadinessTimeoutSeconds", 5);
+    using var budget = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
+    budget.CancelAfter(TimeSpan.FromSeconds(budgetSeconds));
     try
     {
-        if (!await db.Database.CanConnectAsync(ct))
-            return Results.Problem(statusCode: 503, title: "SQL Server unavailable");
+        var readySql = new SqlConnectionStringBuilder(apiSql)
+        {
+            ConnectTimeout = Math.Min(3, budgetSeconds)
+        }.ConnectionString;
+        await using (var connection = new SqlConnection(readySql))
+        {
+            await connection.OpenAsync(budget.Token);
+        }
 
         // A missing key still exercises a real Redis GET.
-        await cache.GetAsync("readiness:probe", ct);
+        await cache.GetAsync("readiness:probe", budget.Token);
         var factory = new ConnectionFactory
         {
             HostName = cfg["Rabbit:Host"] ?? "localhost",
             UserName = cfg["Rabbit:User"] ?? "",
             Password = cfg["Rabbit:Password"] ?? ""
         };
-        await using var rabbit = await factory.CreateConnectionAsync(ct);
+        await using var rabbit = await factory.CreateConnectionAsync(budget.Token);
         return Results.Ok(new { status = "ready" });
+    }
+    catch (OperationCanceledException) when (!http.RequestAborted.IsCancellationRequested)
+    {
+        app.Logger.LogWarning("Readiness exceeded {Seconds}s deadline", budgetSeconds);
+        return Results.Problem(statusCode: 503, title: "Dependency readiness timeout");
     }
     catch (Exception ex) when (ex is not OperationCanceledException)
     {

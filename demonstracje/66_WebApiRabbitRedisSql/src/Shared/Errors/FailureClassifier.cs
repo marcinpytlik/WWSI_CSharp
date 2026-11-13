@@ -27,7 +27,7 @@ public static class FailureClassifier
             foreach (SqlError item in sql.Errors)
                 if (item.Number is -2 or 1205 or 4060 or 40197 or 40501 or 40613
                     or 10928 or 10929 or 49918 or 49919 or 49920
-                    or 233 or 10053 or 10054 or 10060)
+                    or 2 or 26 or 40 or 53 or 64 or 233 or 10053 or 10054 or 10060)
                     return FailureKind.Transient;
 
             return FailureKind.Permanent;
@@ -35,6 +35,10 @@ public static class FailureClassifier
 
         if (error is DbUpdateException db && db.InnerException is not null)
             return Classify(db.InnerException);
+
+        if (error is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException retry
+            && retry.InnerException is not null)
+            return Classify(retry.InnerException);
 
         // Unexpected errors deserve bounded retries, then DLQ for investigation.
         return FailureKind.Transient;

@@ -208,3 +208,29 @@ docker compose up -d --build api worker
 ```
 
 Smoke test sprawdza dodatkowo odpowiedzi **400, 409, 404 i 401**. Testy xUnit weryfikują klasyfikację błędnych poleceń i timeoutów. Zachowanie w trakcie awarii SQL i brokera wymaga osobnych scenariuszy awaryjnych.
+
+## Timeout Policy & Dependency Resilience
+
+Nowa polityka API (ustawienia z `docker-compose.yml`):
+
+| Ustawienie | Wartość laboratorium |
+|---|---|
+| Resilience__SqlConnectTimeoutSeconds | 3 |
+| Resilience__SqlCommandTimeoutSeconds | 10 |
+| Resilience__SqlRetryCount | 1 |
+| Resilience__ReadinessTimeoutSeconds | 5 |
+
+`/health/ready` sprawdza SQL bez retry EF Core przy użyciu osobnego połączenia,
+a jego termin upływa po 5 sekundach (zależnie od poprawnej obsługi anulowania
+przez sterowniki zależności). Zwrot błędu zależności to HTTP 503.
+`/health/live` działa niezależnie od SQL. POST nadal zapisuje
+`OperationStatuses` i `OutboxMessages` atomowo. Nie stosujemy
+agresywnego anulowania w środku SQL COMMIT: niepewny wynik należy ponowić
+z **tym samym** `Idempotency-Key` i payloadem.
+
+Laboratoryjny test awarii (czasowo zatrzymuje kontener SQL):
+```powershell
+.\scripts\Test-SqlOutage.ps1
+```
+Skrypt uruchamia SQL ponownie w bloku finally. Nie usuwa wolumenów.
+Uruchamiaj wyłącznie na dedykowanym środowisku demonstracyjnym.
