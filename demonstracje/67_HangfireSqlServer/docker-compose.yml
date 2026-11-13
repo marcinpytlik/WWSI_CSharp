@@ -1,0 +1,47 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}"
+      MSSQL_PID: "Developer"
+    ports: ["127.0.0.1:14354:1433"]
+    volumes: [hangfire67_sql:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+  db-init:
+    profiles: ["setup"]
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    volumes: ["./sql:/scripts:ro"]
+    entrypoint: ["/bin/bash", "/scripts/init.sh"]
+    environment:
+      SQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}"
+      SQL_HANGFIRE_PASSWORD: "${SQL_HANGFIRE_PASSWORD:?Set SQL_HANGFIRE_PASSWORD in .env}"
+    depends_on:
+      sql: {condition: service_healthy}
+    restart: "no"
+  api:
+    build:
+      context: ../..
+      dockerfile: demonstracje/67_HangfireSqlServer/src/Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__Sql: "Server=sql;Database=HangfireLab67;User Id=demo67_hangfire;Password=${SQL_HANGFIRE_PASSWORD:?Set SQL_HANGFIRE_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True"
+    ports: ["127.0.0.1:8081:8080"]
+    depends_on:
+      sql: {condition: service_healthy}
+    restart: unless-stopped
+  worker:
+    build:
+      context: ../..
+      dockerfile: demonstracje/67_HangfireSqlServer/src/Worker/Dockerfile
+    environment:
+      ConnectionStrings__Sql: "Server=sql;Database=HangfireLab67;User Id=demo67_hangfire;Password=${SQL_HANGFIRE_PASSWORD:?Set SQL_HANGFIRE_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True"
+    depends_on:
+      sql: {condition: service_healthy}
+    restart: unless-stopped
+volumes:
+  hangfire67_sql:

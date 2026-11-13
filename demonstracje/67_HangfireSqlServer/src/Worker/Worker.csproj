@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+ <ItemGroup>
+  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  <ProjectReference Include="../Shared/Shared.csproj" />
+  <PackageReference Include="Hangfire.AspNetCore" />
+  <PackageReference Include="Hangfire.SqlServer" />
+  <PackageReference Include="Microsoft.Extensions.Hosting" />
+ </ItemGroup>
+</Project>
