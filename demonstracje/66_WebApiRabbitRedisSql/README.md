@@ -348,3 +348,42 @@ Skrypt w `finally` przywraca poprzednie ustawienie zmiennej i,
 gdy trzeba, odtwarza Workera. Nie usuwa wolumenów ani bazy SQL.
 Scenariusz zakłada jednego testowego konsumenta RabbitMQ, brak
 równoległego restartowania Workera przez inne zadania i środowisko labowe.
+
+## Eksperyment 9: bezpieczny, zatwierdzany przez operatora DLQ Replay
+
+`products.dead` nie jest automatycznie opróżniana. Narzędzie
+`tools/DlqReplay` działa jako jednorazowy kontener z profilem
+Compose `tools` (RabbitMQ.Client 7.x). Preview pobiera wiadomości
+z ręcznym ACK i zwraca je do kolejki bez kasowania. Pokazuje GUID operacji,
+MessageId i nazwę dla poprawnego komunikatu, a dla niepoprawnego JSON-a
+wyłącznie informację o błędzie — bez ujawniania payloadu.
+
+Replay wymaga wskazania konkretnego GUID, zweryfikowanego statusu w SQL
+`Failed / RETRIES_EXHAUSTED`, wyłączonego laboratoryjnego
+`Chaos__EnableDlqProbe` i ręcznego wpisania
+`REPLAY <guid>`. Dopuszczamy wyłącznie poprawne, testowe
+komunikaty `DeadLetterProbe-*`. Zanim oryginał dostanie ACK,
+nowa publikacja do `products.create` musi uzyskać publisher confirm.
+Nie kopiujemy starego nagłówka `x-demo-attempt` ani `x-death`.
+W razie awarii po publikacji, lecz przed ACK, możliwa jest podwójna
+dostawa — zabezpiecza ją idempotentny Worker.
+
+```powershell
+git pull
+dotnet test .\tests\QueueCacheDemo.Tests\QueueCacheDemo.Tests.csproj
+docker compose build dlq-replay
+
+# Przejrzyj komunikaty. Pierwszych 100, bez usuwania:
+.\scripts\Test-DlqReplay.ps1
+
+# Wybierz GUID operacji Failed/RETRIES_EXHAUSTED z eksperymentu 6:
+.\scripts\Test-DlqReplay.ps1 -OperationId "<GUID>"
+# Wpisz dokładnie: REPLAY <GUID>
+.\scripts\Smoke-Test.ps1
+```
+
+Test jest przeznaczony wyłącznie do dedykowanego środowiska. Nie powtarzaj
+automatycznie replay dla tego samego GUID, jeśli potwierdzenie publikacji
+zostało utracone: sprawdź najpierw stan SQL i kolejki. Narzędzie przegląda
+do 100 wiadomości i czasowo rezerwuje je na jednym kanale, zwracając
+niewybrane do DLQ. Nie używaj równolegle z innym operatorem DLQ.

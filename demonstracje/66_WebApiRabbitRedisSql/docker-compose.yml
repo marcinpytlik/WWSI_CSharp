@@ -98,6 +98,17 @@ services:
       rabbitmq: {condition: service_healthy}
       redis: {condition: service_healthy}
     restart: unless-stopped
+  dlq-replay:
+    profiles: ["tools"]
+    build:
+      context: ../..
+      dockerfile: demonstracje/66_WebApiRabbitRedisSql/tools/DlqReplay/Dockerfile
+    environment:
+      Rabbit__Host: "rabbitmq"
+      Rabbit__User: "${RABBIT_USER:?Set RABBIT_USER in .env}"
+      Rabbit__Password: "${RABBIT_PASSWORD:?Set RABBIT_PASSWORD in .env}"
+    restart: "no"
+
 volumes:
   sql_data:
   rabbitmq_data:

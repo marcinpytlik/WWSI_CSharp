@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Shared/Shared.csproj" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+</Project>
