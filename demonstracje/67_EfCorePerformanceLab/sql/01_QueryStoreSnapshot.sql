@@ -33,7 +33,7 @@ EXEC sys.sp_query_store_flush_db;
 
 ;WITH Matched AS
 (
-    SELECT q.query_id, p.plan_id, rs.count_executions,
+    SELECT q.query_id AS QueryId, p.plan_id AS PlanId, rs.count_executions,
            rs.avg_duration, rs.avg_cpu_time, rs.avg_logical_io_reads,
            CASE
              WHEN CHARINDEX(N'FROM [OrderItems] AS [o]', qt.query_sql_text) > 0
