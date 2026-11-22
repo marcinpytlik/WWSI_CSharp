@@ -1,128 +1,233 @@
 # 67 — EF Core Performance Lab: N+1 vs Include vs Projection vs SplitQuery
 
-**WWSI / .NET 10 / EF Core 10 / SQL Server 2022 / Docker Compose / PowerShell 7**
+**WWSI | .NET 10 | EF Core 10 | SQL Server 2022 | Docker Compose | PowerShell 7**
 
-Cel: porównać cztery sposoby odczytu **tych samych danych** i zobaczyć, jak decyzja programisty zmienia obciążenie SQL Server. To jest przykład do nauki, nie benchmark porównawczy różnych silników baz danych.
+> **Cel:** samodzielnie uruchomić cztery warianty pobierania tych samych danych, porównać czas aplikacji, CPU SQL Server, logical reads i liczbę poleceń SQL.  
+> **Zalecana droga:** Docker → Query Store → Test-Lab → Run-All-Benchmark → analiza CSV. Nie trzeba ręcznie wykonywać snapshotów Query Store.
 
-## Scenariusz
+## 1. Co badamy?
 
-Seed dodaje **100 zamówień po 10 pozycji = 1100 wierszy**. Każdy endpoint zwraca tę samą strukturę `OrderDto` z kolekcją `OrderItemDto`, w tej samej kolejności. Przy porównaniu `take=100` wszystkie cztery strategie powinny zwracać 100 zamówień i 1000 pozycji.
+Baza `EfPerformanceLab` zawiera po pierwszej inicjalizacji **100 zamówień po 10 pozycji**: 1000 pozycji, razem 1100 rekordów. Każdy wariant zwraca te same zamówienia i pozycje jako DTO.
 
-| Endpoint | Technika | Oczekiwana liczba SELECT przy take=100 |
-|---|---|---:|
-| /api/orders/nplusone | Jeden SELECT zamówień + osobny SELECT pozycji dla każdego zamówienia (antywzorzec) | 101 |
-| /api/orders/include | `Include(x => x.Items)` + `AsSingleQuery()` | 1 |
-| /api/orders/projection | Projekcja `Select` bez materializowania encji | 1 |
-| /api/orders/split | `Include` + `AsSplitQuery()` (zapytanie główne i kolekcja) | 2 |
+| Strategia | Endpoint | Sposób pobierania | Polecenia SQL przy `take=100` |
+|---|---|---|---:|
+| N+1 | `/api/orders/nplusone` | 1 SELECT zamówień + 100 osobnych SELECT-ów pozycji | **101** |
+| Include | `/api/orders/include` | `Include()` i `AsSingleQuery()` | **1** |
+| Projection | `/api/orders/projection` | `Select()` do DTO i `AsSingleQuery()` | **1** |
+| SplitQuery | `/api/orders/split` | `Include()` i `AsSplitQuery()` | **2** |
 
-N+1 jest **celowo zaprogramowane jawną pętlą**, bez lazy-loading proxies, tak by efekt był deterministyczny. Dla porównania są używane `AsNoTracking()`, uporządkowanie i identyczne DTO. Zapytania mają znaczniki `TagWith("EFPLAB:...")`, przydatne np. w logach EF, lecz Query Store nie musi zachować tych komentarzy. Snapshoty rozpoznają kształt SQL bez przywiązywania się do `query_id`. Wyniki latency, logical reads i CPU **należy zmierzyć**, a nie traktować obrazka promocyjnego jako wyniku eksperymentu.
+N+1 jest celowo napisane jako jawna pętla, bez lazy-loading proxies. Każdy wariant używa `AsNoTracking()`, porządkuje pozycje i zwraca identyczną strukturę. Mechanizm `DbCommandInterceptor` z `AsyncLocal` liczy polecenia reader wykonywane w danym żądaniu.
 
-## Uruchomienie
+Po ćwiczeniu student powinien umieć wytłumaczyć problem N+1, wskazać różnicę między `Include`, projekcją i split queries oraz odróżnić czas aplikacji od CPU i logical reads SQL Server.
 
-Wymagania: Docker Desktop (Linux containers), Docker Compose, PowerShell 7; opcjonalnie SSMS. Projekt uruchamia się bez lokalnego .NET SDK, bo API jest kompilowane w kontenerze.
+## 2. Wymagania
+
+- Windows 11, Docker Desktop w trybie **Linux containers** i Docker Compose; odpowiednia ilość pamięci dla SQL Server (zalecane minimum 4 GB dostępnego RAM).
+- **PowerShell 7** (`pwsh --version`), Git i połączenie potrzebne do pobrania obrazów.
+- SSMS — **opcjonalnie**, bo automatyczny skrypt wywołuje `sqlcmd` wewnątrz kontenera.
+- Lokalny .NET SDK **nie jest potrzebny**: API jest kompilowane w kontenerze .NET SDK 10.
+
+Porty na hoście: API `127.0.0.1:5087`, SQL Server `127.0.0.1:14367`. Nie wykorzystuj istniejącego produkcyjnego SQL Server.
+
+### Pliki i ich rola
+
+| Plik | Co robi |
+|---|---|
+| `docker-compose.yml`, `env.template` | uruchamiają SQL i API, konfigurują hasło, porty i wolumen |
+| `src/PerformanceLab.Api/Program.cs` | model danych, seed i cztery endpointy |
+| `scripts/Test-Lab.ps1` | sprawdza liczbę zapytań i zgodność zwracanych danych |
+| `scripts/Run-Benchmark.ps1` | zwykły pomiar jednej lub wszystkich strategii |
+| **`scripts/Run-All-Benchmark.ps1`** | **kompletne porównanie czterech strategii z Query Store** |
+| `sql/01_QueryStoreSnapshot.sql` | snapshot liczników z etykietą BEFORE/AFTER |
+| `sql/02_QueryStoreDelta.sql` | ręczne porównanie jednej pary snapshotów |
+| `sql/03_QueryStoreCompareAll.sql` | agregacja czterech serii dla automatu |
+| `sql/QueryStore.sql` | podgląd historii zapytań z Query Store |
+| `RESULTS-2026-11-22.md` | pierwsza seria referencyjna sprzed dodania SplitQuery |
+
+## 3. Instalacja i uruchomienie — wykonuj po kolei
+
+**Krok 1. Pobierz kod** w PowerShell 7:
 
 ~~~powershell
-cd demonstracje/67_EfCorePerformanceLab
+git clone https://github.com/marcinpytlik/WWSI_CSharp.git
+cd WWSI_CSharp/demonstracje/67_EfCorePerformanceLab
+~~~
+
+Jeżeli repo już masz, przejdź do `demonstracje/67_EfCorePerformanceLab` i użyj `git pull`. Wszystkie pozostałe polecenia uruchamiaj z tego katalogu.
+
+**Krok 2. Utwórz `.env` — tylko przy pierwszym uruchomieniu.**
+
+~~~powershell
 Copy-Item env.template .env
-# Zmień SQL_SA_PASSWORD w .env (silne hasło, tylko lokalne demo)
+notepad .env
+~~~
+
+Zmień wartość `SQL_SA_PASSWORD` na **własne silne hasło**; nie umieszczaj hasła w repozytorium ani w pracy zaliczeniowej. `.env` jest ignorowany przez Git. Jeśli baza była już uruchamiana, **nie nadpisuj istniejącego `.env`**: zmiana zmiennej nie zmienia hasła `sa` zapisanego w istniejącym wolumenie SQL Server.
+
+**Krok 3. Zbuduj i uruchom kontenery.**
+
+~~~powershell
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
 Invoke-RestMethod http://localhost:5087/health
-Invoke-RestMethod 'http://localhost:5087/api/orders/nplusone?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
-Invoke-RestMethod 'http://localhost:5087/api/orders/include?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
-Invoke-RestMethod 'http://localhost:5087/api/orders/projection?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
-./scripts/Test-Lab.ps1 -Take 100
-./scripts/Run-Benchmark.ps1 -Repetitions 5 -Take 100
 ~~~
 
-SQL Server jest wystawiony wyłącznie na localhost:14367, API na localhost:5087. Baza: `EfPerformanceLab`. Przy pierwszym uruchomieniu API tworzy tabele przez `EnsureCreatedAsync` i wykonuje idempotentny seed (tylko gdy brak zamówień). Po wstępnym uruchomieniu SQL Server i API mogą potrzebować chwili na inicjalizację. W przypadku problemów zobacz `docker compose logs api sql`.
+Oczekiwane: `sql` ma status `healthy`, `api` jest `Up`, endpoint `/health` zwraca `ready`. Inicjalizacja API tworzy schemat poprzez `EnsureCreatedAsync` i wstawia dane, o ile nie ma jeszcze zamówień.
 
-**UWAGA:** Laboratorium używa konta `sa` wyłącznie dla prostoty instalacji i samo tworzy bazę. Nie jest to wzorzec wdrożenia produkcyjnego: tam wymagane są kontrolowane migracje, least privilege, TLS i sekrety. Nie uruchamiaj razem z cudzymi danymi SQL, nie wystawiaj portów poza localhost. Hasła w istniejącym wolumenie nie zmieniaj przez samo edytowanie .env. **Nie używaj `docker compose down -v`**, jeżeli chcesz zachować dane.
+**Krok 4. Ustaw Query Store w trybie ALL — wymagany dla pełnego testu.**
 
-## Co mierzymy?
-
-- `sqlCommands`: liczba poleceń wykonujących reader w EF Core dla danego żądania, dzięki `DbCommandInterceptor` i `AsyncLocal`. Nie jest to liczba wszystkich zapytań na serwerze.
-- `elapsedMs`: czas materializacji wyniku i logiki endpointu mierzony `Stopwatch`. Nie obejmuje transmisji HTTP / serializacji odpowiedzi.
-- `Data`: te same zamówienia i pozycje dla wszystkich strategii.
-- `QueryStore.sql`: historyczne średnie CPU, czas trwania i logical reads *per zapytanie*. Nie sumuj ich bezmyślnie bez uwzględnienia liczby wykonań: N+1 to wiele krótkich poleceń. Query Store może agregować warianty i raportuje pomiary silnika SQL, nie HTTP.
-
-## Zmierzone wyniki — 22.11.2026
-
-Zobacz [RESULTS-2026-11-22.md](RESULTS-2026-11-22.md): przy 20 powtórzeniach mediana N+1 = **114,93 ms**, Include = **6,63 ms**, Projection = **6,20 ms**. W tamtej serii nie było jeszcze wariantu SplitQuery. Statystyki Query Store historyczne: średnie 11 logical reads dla zapytania pozycji, 14 dla Include i 14 dla Projection. **Nie są to porównania kosztów pojedynczego, zsynchronizowanego żądania**.
-
-## Jeden skrypt porównujący wszystkie cztery strategie
-
-Najprościej uruchom **jeden skrypt** z katalogu demonstracji:
+W PowerShell 7, bez konieczności uruchamiania SSMS:
 
 ~~~powershell
-git pull
-docker compose up -d --build
+docker compose exec sql bash -c 'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d master -b -Q "ALTER DATABASE EfPerformanceLab SET QUERY_STORE (OPERATION_MODE = READ_WRITE, QUERY_CAPTURE_MODE = ALL);"'
+~~~
+
+Lub w SSMS połącz się z `localhost,14367`, uwierzytelnianiem SQL Server, użytkownikiem `sa` i hasłem z `.env`, a następnie:
+
+~~~sql
+ALTER DATABASE EfPerformanceLab
+SET QUERY_STORE (OPERATION_MODE = READ_WRITE, QUERY_CAPTURE_MODE = ALL);
+GO
+USE EfPerformanceLab;
+GO
+SELECT actual_state_desc, query_capture_mode_desc
+FROM sys.database_query_store_options;
+GO
+~~~
+
+Oczekiwane: `READ_WRITE` oraz `ALL`. Tryb `AUTO` może pominąć część krótkich zapytań i uniemożliwić porównanie wszystkich poleceń.
+
+**Krok 5. Wykonaj smoke test.**
+
+~~~powershell
+./scripts/Test-Lab.ps1 -Take 100
+~~~
+
+Oczekiwane są wszystkie komunikaty `PASS`, w tym:
+
+~~~text
+PASS nplusone : 100 orders, 101 SQL commands
+PASS include : 100 orders, 1 SQL commands
+PASS projection : 100 orders, 1 SQL commands
+PASS split : 100 orders, 2 SQL commands
+PASS include : payload matches nplusone
+PASS projection : payload matches nplusone
+PASS split : payload matches nplusone
+~~~
+
+Test porównuje **dane** wszystkich czterech wariantów, a nie wyłącznie liczby zapytań. Jeśli nie przejdzie, najpierw diagnozuj błąd; nie wykonuj jeszcze benchmarku.
+
+## 4. Jeden skrypt do kompletnego porównania
+
+~~~powershell
 ./scripts/Run-All-Benchmark.ps1 -Take 100 -Repetitions 10
 ~~~
 
-Wymagania: PowerShell 7, lokalny Docker Compose, zdrowy kontener SQL i API; Query Store w bazie `EfPerformanceLab` musi być w trybie `READ_WRITE` i `QUERY_CAPTURE_MODE = ALL`. Skrypt:
+Działanie skryptu:
 
-1. Weryfikuje cztery endpointy i ich zgodność danych (`Test-Lab.ps1`), co zarazem rozgrzewa zapytania.
-2. Wykonuje oddzielny snapshot BEFORE i AFTER dla każdej strategii, bez zerowania Query Store.
-3. Uruchamia kontrolowaną serię tylko jednej strategii pomiędzy jej snapshotami.
-4. Zbiera metryki Query Store (wykonania, suma CPU, suma czasu i logical reads) i odrzuca niekompletne serie, jeżeli liczba SQL commandów różni się od oczekiwanej.
-5. Wyświetla tabelę: `MedianEfMs`, `SqlCommandsPerRequest`, `SqlCpuMsPerRequest`, `SqlDurationMsPerRequest`, `SqlLogicalReadsPerRequest`. Eksportuje `comparison-<token>.csv` i `benchmark-all-<token>.csv` do `scripts` (pliki ignorowane przez Git).
+1. Test zgodności wyników i wstępna rozgrzewka (`Test-Lab.ps1`).
+2. Osobna seria dla każdej strategii: snapshot **BEFORE**, 10 wywołań wybranej strategii, snapshot **AFTER**.
+3. Pobranie przyrostów z Query Store i sprawdzenie kompletności poleceń SQL: N+1 = **1010**, Include = **10**, Projection = **10**, SplitQuery = **20**.
+4. Zestawienie czasu aplikacji i kosztów SQL na **jedno żądanie**.
+5. Eksport do CSV. Każde wywołanie automatu otrzymuje osobny identyfikator `token`.
 
-`MedianEfMs` jest medianą stopwatch aplikacji, pozostałe trzy wartości kosztów SQL są **średnimi na żądanie** z przyrostów Query Store — nie są to te same statystyki rozkładu. W trakcie pomiarów nie uruchamiaj innych klientów ani narzędzi wysyłających zapytania do tabel labu. Wartości logic reads nie oznaczają fizycznych odczytów dyskowych.
+W trakcie pomiaru nie uruchamiaj równolegle innych klientów tego laboratorium. Skrypt **nie resetuje historii Query Store** i nie usuwa bazy.
 
-Skrypt wykonuje SQL przez `docker compose exec -T sql ... sqlcmd`; hasło jest odczytywane z `MSSQL_SA_PASSWORD` wewnątrz kontenera i nie należy wpisywać go w argumentach poleceń PowerShell. Ze względu na dydaktyczny charakter testów i zależność snapshotów od kształtów SQL, skrypt jest przeznaczony wyłącznie do tego lokalnego laboratorium.
+Tabela końcowa zawiera:
 
-## Kontrolowany eksperyment z przyrostami Query Store
+| Kolumna | Znaczenie |
+|---|---|
+| `Strategy` | nplusone / include / projection / split |
+| `MedianEfMs` | mediana czasu operacji mierzonej `Stopwatch` w aplikacji |
+| `SqlCommandsPerRequest` | liczba poleceń SQL na żądanie |
+| `SqlCpuMsPerRequest` | **średnia** suma CPU SQL Server na żądanie |
+| `SqlDurationMsPerRequest` | **średnia** suma duration instrukcji SQL na żądanie |
+| `SqlLogicalReadsPerRequest` | **średnie** logical reads na żądanie |
+| `Requests` | liczba zmierzonych wywołań danej strategii |
 
-1. W SSMS połącz się z lokalnym `localhost,14367`, bazą `EfPerformanceLab`. Włącz na potrzeby labu `QUERY_CAPTURE_MODE = ALL`:
+Pliki w `scripts`:
 
-~~~sql
-ALTER DATABASE EfPerformanceLab SET QUERY_STORE
-( OPERATION_MODE = READ_WRITE, QUERY_CAPTURE_MODE = ALL );
-~~~
+- `comparison-<token>.csv` — końcowe porównanie wszystkich strategii;
+- `benchmark-all-<token>.csv` — każdy pojedynczy pomiar aplikacyjny;
+- `benchmark-results.csv` — wynik ostatniej strategii, **nadpisywany** w trakcie testu.
 
-2. Zbuduj najnowszą wersję API z tagami zapytań:
+Dwa pliki z `token` są właściwymi artefaktami do analizy i oddania prowadzącemu. Nie są automatycznie dodawane do Git.
 
-~~~powershell
-docker compose up -d --build
-./scripts/Test-Lab.ps1 -Take 100    # sprawdza 101 / 1 / 1 / 2 i zgodność danych
-~~~
+**Ważne:** `MedianEfMs` to mediana, a metryki Query Store są średnimi na żądanie. Nie należy ich bezpośrednio odejmować od siebie i nazywać różnicy np. kosztem JIT, sieci lub materializacji. Stopwatch nie obejmuje serializacji odpowiedzi ani pełnego czasu HTTP. Logical reads to odczyty stron logicznych, a nie fizyczne odczyty dysku.
 
-3. Rozgrzej warianty **przed** snapshotem (skrypt Test-Lab jest wystarczającym warm-up). W SSMS wykonaj [sql/01_QueryStoreSnapshot.sql](sql/01_QueryStoreSnapshot.sql) z `@Label = N'BEFORE'`. Skrypt powinien pokazać kategorie zapytań, a nie zero wierszy.
-4. Bez innych klientów uruchom **tylko jedną strategię**, np.:
+## 5. Wyniki referencyjne — 22 listopada 2026
 
-~~~powershell
-./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -SkipWarmup -Strategy nplusone
-~~~
+W dotychczas sprawdzonej, kontrolowanej serii `Run-All-Benchmark.ps1` (po 10 powtórzeń, `take=100`) uzyskano:
 
-5. W SSMS wykonaj ponownie `sql/01_QueryStoreSnapshot.sql` po zmianie etykiety na `AFTER`. Następnie [sql/02_QueryStoreDelta.sql](sql/02_QueryStoreDelta.sql). Powtórz cały cykl BEFORE → osobna strategia → AFTER → delta dla `include`, `projection` i `split`.
+| Strategia | Mediana EF (ms) | Polecenia / żądanie | CPU SQL (ms/żąd.) | Duration SQL (ms/żąd.) | Logical reads / żądanie |
+|---|---:|---:|---:|---:|---:|
+| N+1 | 119,83 | 101 | 21,40 | 21,43 | 1103 |
+| Include | 6,01 | 1 | 1,95 | 1,95 | 14 |
+| Projection | 5,11 | 1 | 2,73 | 2,73 | 14 |
+| SplitQuery | 5,23 | 2 | 1,70 | 1,70 | 17 |
 
-**Dlaczego tak?** Query Store w zaobserwowanym środowisku nie zachował komentarzy `TagWith("EFPLAB:...")` w przechowywanym tekście SQL. Oryginalny filtr `LIKE '%EFPLAB:%'` dawał `BEFORE = 0`, `AFTER = 1` (przypadkowo przechwytując tekst samego zapytania diagnostycznego). Poprawione snapshoty rozpoznają rzeczywiste kształty zapytań SQL, używając `CHARINDEX` z dosłownymi fragmentami. Nie wymagają stałych `query_id`, ale **zależą od kształtu SQL generowanego przez tę wersję EF Core**.
+**Nie oczekuj identycznych milisekund** na swoim komputerze. Wyniki zależą od hosta, obciążenia, rozgrzania środowiska, pamięci, cache, planów wykonania i wersji obrazów. Przykład pokazuje, że najkrótszy czas aplikacji nie zawsze oznacza najmniejsze CPU SQL.
 
-`SHARED:ORDERS` oznacza SELECT wspólny dla N+1 i SplitQuery, dlatego należy uruchamiać pomiary osobno. Przy `take=100` i `Repetitions=10`: N+1 daje około 10 wykonań `SHARED:ORDERS` i 1000 `NPLUSONE:ITEMS`; SplitQuery około 10 `SHARED:ORDERS` i 10 `SPLIT:ITEMS`. Query Store gromadzi metryki asynchronicznie; przy opóźnieniach albo dodatkowym ruchu wynik może odbiegać od oczekiwań. Nie resetuj produkcyjnego Query Store.
+Starsza seria (20 powtórzeń, jeszcze bez SplitQuery) jest udokumentowana w [RESULTS-2026-11-22.md](RESULTS-2026-11-22.md).
 
-## Zadania laboratoryjne
+## 6. Dla dociekliwych — ręczne testy i Query Store
 
-1. Uruchom 4 endpointy z `take=10`, a potem `take=100`. Jak rośnie liczba poleceń SQL?
-2. Wykonaj warm-up i minimum 5 powtórzeń. Zapisz medianę, nie pojedynczy pomiar.
-3. Porównaj liczby zamówień i pozycji między odpowiedziami.
-4. Otwórz `sql/QueryStore.sql` w SSMS, wybierz bazę `EfPerformanceLab`, przeanalizuj powtarzane zapytania po `OrderId` i logical reads.
-5. Zmień liczbę pozycji na zamówienie, powtórz eksperyment i oceń transfer danych w `Include`.
-6. Porównaj `AsSplitQuery()` i oceń kompromis pomiędzy liczbą round-tripów a duplikowaniem kolumn w JOIN.
-
-## Wnioski, które należy zweryfikować
-
-- N+1 zwiększa liczbę round-tripów wraz z liczbą zamówień.
-- `Include` pobiera pełne encje i ich kolumny; projekcja ogranicza listę kolumn.
-- Jeden SELECT **nie gwarantuje** najlepszego planu i najkrótszego czasu. Dla wielu kolekcji JOIN może prowadzić do cartesian explosion.
-- Nie porównuj wyłącznie czasu z jednego wykonania: cold/warm cache, plan cache, sieć, tracking i wielkość danych mają znaczenie.
-
-## Bezpieczeństwo i sprzątanie
+**Szybki benchmark bez Query Store:**
 
 ~~~powershell
-docker compose down      # zachowuje wolumen SQL
-# docker compose down -v  # DESTRUKCYJNE, usuwa bazę demo — tylko świadomy reset labu
+./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -Strategy all
+./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -Strategy include
 ~~~
 
-> Jeśli używasz repozytorium jako materiału na zajęcia, najpierw sprawdź `docker compose up --build`, liczbę wierszy i payload oraz dopiero potem przedstawiaj studentom wnioski o wydajności.
+**Ręczny snapshot jednej strategii:**
+
+1. Wykonaj `Test-Lab.ps1` i potwierdź `READ_WRITE` + `ALL` w Query Store.
+2. Otwórz [sql/01_QueryStoreSnapshot.sql](sql/01_QueryStoreSnapshot.sql) w SSMS i uruchom z `@Label = N'BEFORE'`. Powinno być **pięć** kategorii: `NPLUSONE:ITEMS`, `SHARED:ORDERS`, `INCLUDE`, `PROJECTION`, `SPLIT:ITEMS`.
+3. Uruchom tylko N+1:
+
+~~~powershell
+./scripts/Run-Benchmark.ps1 -Strategy nplusone -Take 100 -Repetitions 10 -SkipWarmup
+~~~
+
+4. W `01_QueryStoreSnapshot.sql` zmień etykietę na `AFTER` i uruchom skrypt ponownie.
+5. Wykonaj [sql/02_QueryStoreDelta.sql](sql/02_QueryStoreDelta.sql). Oczekiwane przyrosty: około **1000 `NPLUSONE:ITEMS`** i **10 `SHARED:ORDERS`**.
+
+**Dlaczego nie filtrujemy po `TagWith("EFPLAB:...")`?** W naszym SQL Server tekst przechowywany w Query Store nie zawierał tych komentarzy. Wcześniejszy filtr `LIKE '%EFPLAB:%'` zwracał 0 lub 1 wiersz (w tym sam skrypt diagnostyczny). Obecne snapshoty klasyfikują zapytania po **kształcie generowanego SQL**, nie po stałych `query_id`. To dopasowanie jest specyficzne dla tej wersji kodu i może wymagać aktualizacji po zmianie EF Core.
+
+`SHARED:ORDERS` jest wspólnym kształtem odczytu zamówień dla N+1 i SplitQuery. Dlatego automatyczny benchmark izoluje strategie.
+
+## 7. Typowe błędy i rozwiązania
+
+| Problem | Co sprawdzić |
+|---|---|
+| `WARN The "MSSQL_SA_PASSWORD" variable is not set` | Poprzedni healthcheck interpolował hasło przed uruchomieniem kontenera. Zrób `git pull`, `docker compose config --quiet`, `docker compose up -d --force-recreate`. |
+| `18456 State 8`, login `sa` | Niezgodność hasła w `.env` z kontem `sa`, szczególnie po ponownym użyciu wolumenu. Nie kasuj wolumenu automatycznie. |
+| SQL `health: starting`, API `Created` | API czeka na SQL. Sprawdź `docker compose ps -a` oraz `docker compose logs sql api`. |
+| Snapshot ma 0/1 wiersz | Sprawdź `QUERY_CAPTURE_MODE = ALL`, uruchom `Test-Lab.ps1` i użyj aktualnych plików SQL z Git. |
+| `Invalid column name 'QueryId' / 'PlanId'` | Stara wersja `01_QueryStoreSnapshot.sql`; wykonaj `git pull`. |
+| PowerShell `Nie można odnaleźć właściwości Count` | Stara wersja skryptu — poprawiono obsługę pojedynczych wyników; wykonaj `git pull`. |
+| `sqlcmd` nie istnieje | Sprawdź `docker compose exec sql ls /opt/mssql-tools18/bin/sqlcmd`; wersja obrazu mogła się zmienić. |
+| Port `5087` lub `14367` zajęty | Sprawdź `docker ps`, dostosuj mapowanie portu hosta i opcjonalny parametr `-BaseUrl` w skryptach. |
+| Wyniki czasowe odbiegają od przykładu | Porównaj wersje obrazów i zasoby hosta; powtórz pomiary, analizuj mediany. |
+
+## 8. Zadania studenta i kryteria zaliczenia
+
+1. Uruchom test poprawności. Dlaczego liczba poleceń SQL to **101/1/1/2**?
+2. Uruchom pełny benchmark dla `-Take 100 -Repetitions 10`, zapisz oba CSV z tokenem.
+3. Policz, ile razy szybszy był wybrany wariant od N+1 (na podstawie median) i o ile procent zmniejszyły się logical reads.
+4. Porównaj najmniejszą medianę czasu EF Core z najmniejszym średnim CPU SQL Server. Czy wskazują ten sam wariant?
+5. Powtórz ćwiczenie z `-Take 10` i `-Take 50`; opisz skalowanie liczby poleceń.
+6. Opisz, kiedy `AsSplitQuery()` może ograniczyć duplikację danych (szczególnie przy kilku kolekcjach), a kiedy dodatkowe round-tripy będą niekorzystne.
+7. Opcjonalnie w SSMS przejrzyj `sql/QueryStore.sql`, identyfikuj instrukcje SQL i plany wykonania.
+
+**Do oddania:** `comparison-<token>.csv`, `benchmark-all-<token>.csv`, krótki opis środowiska i wnioski do punktów 3–6. **Nie przesyłaj `.env` ani haseł.**
+
+## 9. Zatrzymanie i bezpieczeństwo
+
+~~~powershell
+docker compose down       # zatrzymuje kontenery, zachowuje wolumen danych SQL
+# docker compose down -v  # DESTRUKCYJNE — usuwa wolumen i bazę demonstracyjną
+~~~
+
+Laboratorium stosuje konto `sa` i automatyczne tworzenie schematu **wyłącznie dla prostoty zajęć**. Porty są wystawione tylko na `127.0.0.1`. Nie używaj tej konfiguracji w produkcji. To badanie strategii pobierania danych, **nie** porównanie JIT, ReadyToRun ani Native AOT — eksperyment kompilacji jest osobnym etapem.
