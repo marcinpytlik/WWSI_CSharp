@@ -53,7 +53,7 @@ foreach ($strategy in $strategies) {
         $label = "${phase}:${strategy}:$token"
         $statement = $snapshotTemplate.Replace("DECLARE @Label nvarchar(30) = N'BEFORE';", "DECLARE @Label nvarchar(30) = N'$label';")
         if ($statement -eq $snapshotTemplate) { throw 'Snapshot template label not found; check SQL file revision.' }
-        $message = Invoke-LabSql $statement
+        $message = @(Invoke-LabSql $statement)
         Write-Host "Snapshot $label : $($message.Count) output lines"
     }
 }
