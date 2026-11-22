@@ -241,7 +241,7 @@ Warianty: `jit`, `r2r`, `composite`, `no-tiering`. Wszystkie są publikowane jak
 - **[Scenariusz publikacji SQLManiak](experiments/03_Compilation/PUBLICATION-DRAFT-2026-11-22.md)** — szkic wpisu i zarys artykułu do autorskiej redakcji.
 - [Eksperyment 03](experiments/03_Compilation/README.md) — odtwarzalna instrukcja czterech faz, skrypty PowerShell i pliki CSV.
 
-**Status:** etapy zbierania danych zakończono 22.11.2026; zmiana kończenia `dotnet-trace` po workloadzie została dodana później i wymaga potwierdzenia w Docker Desktop. Ślady `.nettrace` z poprzedniej serii były ucięte czasowo, co opisano w raporcie. Nie interpretuj rozmiaru pliku śladu jako miary CPU lub pamięci.
+**Status:** etapy zbierania danych zakończono 22.11.2026; zmianę kończenia `dotnet-trace` po workloadzie **potwierdzono testem integracyjnym JIT** (token `b8e2a335`: PASS dla counters i trace). Nadal nie przeprowadzono analizy osi czasu samych zdarzeń śladu. Ślady `.nettrace` z poprzedniej serii były ucięte czasowo, co opisano w raporcie. Nie interpretuj rozmiaru pliku śladu jako miary CPU lub pamięci.
 
 ## 11. Zatrzymanie i bezpieczeństwo
 
