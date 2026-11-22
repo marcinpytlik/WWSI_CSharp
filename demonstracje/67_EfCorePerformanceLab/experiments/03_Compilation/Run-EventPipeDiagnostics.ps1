@@ -33,14 +33,32 @@ function Invoke-Compose([string[]] $Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "docker compose failed: $($Arguments -join ' ')" }
 }
 function Wait-ApiReady {
+    # Windows Docker Desktop may temporarily accept connections but return HTTP 499
+    # when the client closes a very short (2s) readiness request.
     $watch = [Diagnostics.Stopwatch]::StartNew()
-    while ($watch.Elapsed.TotalSeconds -lt 120) {
+    $attempt = 0
+    $lastFailure = 'No response yet'
+    while ($watch.Elapsed.TotalSeconds -lt 180) {
+        $attempt++
         try {
-            $health = Invoke-RestMethod 'http://localhost:5087/health' -TimeoutSec 2
-            if ($health.status -eq 'ready') { return }
-        } catch { Start-Sleep -Milliseconds 300 }
+            $health = Invoke-RestMethod -Uri 'http://127.0.0.1:5087/health' -TimeoutSec 10 -ErrorAction Stop
+            if ($health.status -eq 'ready') {
+                Write-Host ("API ready after {0:N1}s (attempt {1})" -f $watch.Elapsed.TotalSeconds,$attempt)
+                return
+            }
+            $lastFailure = "Unexpected health status: $($health.status)"
+        } catch {
+            $lastFailure = $_.Exception.Message
+        }
+        if (($attempt % 5) -eq 0) {
+            Write-Host ("Waiting for API: {0:N1}s, attempt {1}; last: {2}" -f $watch.Elapsed.TotalSeconds,$attempt,$lastFailure)
+        }
+        Start-Sleep -Milliseconds 700
     }
-    throw 'API did not become ready. Check docker compose logs api.'
+    Write-Warning "API readiness timed out. Last error: $lastFailure"
+    & docker compose --project-directory $root @files ps -a
+    & docker compose --project-directory $root @files logs --tail=60 api
+    throw "API did not become ready after 180s. Last error: $lastFailure"
 }
 function Run-Workload([string] $Mode, [string] $Capture) {
     $output = Join-Path $resultsDir "$token-$Mode-$Capture-workload.csv"
