@@ -25,6 +25,34 @@ if (app.Configuration.GetValue<bool>("Lab:Initialize"))
 
 app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
 
+// Laboratory-only process-wide counters. NOT isolated allocations/CPU for one EF query.
+// Enabled only by Lab__Diagnostics=true in compilation experiment override.
+if (app.Configuration.GetValue<bool>("Lab:Diagnostics"))
+{
+    app.MapGet("/diag/runtime", () =>
+    {
+        using var process = Process.GetCurrentProcess();
+        process.Refresh();
+        ThreadPool.GetAvailableThreads(out var availableWorkers, out _);
+        ThreadPool.GetMaxThreads(out var maxWorkers, out _);
+        var info = GC.GetGCMemoryInfo();
+        return Results.Ok(new
+        {
+            processId = Environment.ProcessId,
+            framework = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+            cpuTotalMs = process.TotalProcessorTime.TotalMilliseconds,
+            allocatedTotalBytes = GC.GetTotalAllocatedBytes(precise: false),
+            gen0Collections = GC.CollectionCount(0),
+            gen1Collections = GC.CollectionCount(1),
+            gen2Collections = GC.CollectionCount(2),
+            heapSizeBytes = info.HeapSizeBytes,
+            workingSetBytes = process.WorkingSet64,
+            threadPoolBusyWorkers = maxWorkers - availableWorkers,
+            timestampUtc = DateTimeOffset.UtcNow
+        });
+    });
+}
+
 var api = app.MapGroup("/api/orders");
 api.MapGet("/nplusone", async (LabDbContext db, SqlCommandCounter counter, int take = 100, CancellationToken ct = default) =>
 {
