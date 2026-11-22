@@ -37,7 +37,7 @@ https://github.com/marcinpytlik/WWSI_CSharp/tree/main/demonstracje/67_EfCorePerf
 5. Dlaczego 101 round-tripów ma znaczenie nawet przy tanich SELECT-ach.
 6. Eksperyment kompilacji: JIT/R2R/Composite/no-tiering, zrównoważone rundy kontra pojedynczy fixed-order profiling.
 7. Co wnosi profilowanie: osobne workloady z counters i trace; nie mieszać metryk procesu z jedną operacją EF.
-8. Ograniczenie historycznych śladów 150 s przy ~168–170 s workloadu; poprawka obsługi Enter po workloadzie, oczekująca na test integracyjny.
+8. Ograniczenie historycznych śladów 150 s przy ~168–170 s workloadu; poprawka obsługi Enter po workloadzie, potwierdzona testem integracyjnym JIT (`b8e2a335`); zawartość śladu wymaga osobnej analizy.
 9. Wnioski dla DBA i programisty EF Core; kiedy SplitQuery może ograniczyć kartezjańskie mnożenie wierszy, a kiedy dodatkowy round-trip szkodzi.
 10. Link do odtwarzalnego repo i raportu końcowego.
 
@@ -45,7 +45,7 @@ https://github.com/marcinpytlik/WWSI_CSharp/tree/main/demonstracje/67_EfCorePerf
 - Nie nazywać wyników profilowanych „baseline”.
 - Nie ogłaszać zwycięzcy kompilacji na podstawie jednej fixed-order serii.
 - Nie sugerować, że rozmiar `.nettrace` dowodzi wyższego CPU lub GC.
-- Aktualizować status testu nowej obsługi trace dopiero po potwierdzonym PASS.
+- Nowy mechanizm zakończenia trace ma potwierdzony PASS dla JIT; nie przedstawiać tego jako analizy zdarzeń ani pełnej powtarzalności wszystkich trybów.
 - Dane syntetyczne i skrypty są publiczne; **surowe ślady i dane lokalnego środowiska pozostają lokalne**.
 
 **Status:** tekst do autorskiej akceptacji; nie został opublikowany na LinkedIn ani blogu.
