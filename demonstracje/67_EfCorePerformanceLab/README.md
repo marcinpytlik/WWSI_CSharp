@@ -1,20 +1,21 @@
-# 67 — EF Core Performance Lab: N+1 vs Include vs Projection
+# 67 — EF Core Performance Lab: N+1 vs Include vs Projection vs SplitQuery
 
 **WWSI / .NET 10 / EF Core 10 / SQL Server 2022 / Docker Compose / PowerShell 7**
 
-Cel: porównać trzy sposoby odczytu **tych samych danych** i zobaczyć, jak decyzja programisty zmienia obciążenie SQL Server. To jest przykład do nauki, nie benchmark porównawczy różnych silników baz danych.
+Cel: porównać cztery sposoby odczytu **tych samych danych** i zobaczyć, jak decyzja programisty zmienia obciążenie SQL Server. To jest przykład do nauki, nie benchmark porównawczy różnych silników baz danych.
 
 ## Scenariusz
 
-Seed dodaje **100 zamówień po 10 pozycji = 1100 wierszy**. Każdy endpoint zwraca tę samą strukturę `OrderDto` z kolekcją `OrderItemDto`, w tej samej kolejności.
+Seed dodaje **100 zamówień po 10 pozycji = 1100 wierszy**. Każdy endpoint zwraca tę samą strukturę `OrderDto` z kolekcją `OrderItemDto`, w tej samej kolejności. Przy porównaniu `take=100` wszystkie cztery strategie powinny zwracać 100 zamówień i 1000 pozycji.
 
 | Endpoint | Technika | Oczekiwana liczba SELECT przy take=100 |
 |---|---|---:|
 | /api/orders/nplusone | Jeden SELECT zamówień + osobny SELECT pozycji dla każdego zamówienia (antywzorzec) | 101 |
 | /api/orders/include | `Include(x => x.Items)` + `AsSingleQuery()` | 1 |
 | /api/orders/projection | Projekcja `Select` bez materializowania encji | 1 |
+| /api/orders/split | `Include` + `AsSplitQuery()` (zapytanie główne i kolekcja) | 2 |
 
-N+1 jest **celowo zaprogramowane jawną pętlą**, bez lazy-loading proxies, tak by efekt był deterministyczny. Dla porównania są używane `AsNoTracking()`, uporządkowanie i identyczne DTO. Wyniki latency, logical reads i CPU **należy zmierzyć**, a nie traktować obrazka promocyjnego jako wyniku eksperymentu.
+N+1 jest **celowo zaprogramowane jawną pętlą**, bez lazy-loading proxies, tak by efekt był deterministyczny. Dla porównania są używane `AsNoTracking()`, uporządkowanie i identyczne DTO. Znaczniki `TagWith("EFPLAB:...")` rozpoznają warianty w Query Store bez przywiązywania się do `query_id`. Wyniki latency, logical reads i CPU **należy zmierzyć**, a nie traktować obrazka promocyjnego jako wyniku eksperymentu.
 
 ## Uruchomienie
 
@@ -31,7 +32,8 @@ Invoke-RestMethod http://localhost:5087/health
 Invoke-RestMethod 'http://localhost:5087/api/orders/nplusone?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
 Invoke-RestMethod 'http://localhost:5087/api/orders/include?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
 Invoke-RestMethod 'http://localhost:5087/api/orders/projection?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
-./scripts/Test-Lab.ps1 -Take 100\n./scripts/Run-Benchmark.ps1 -Repetitions 5 -Take 100
+./scripts/Test-Lab.ps1 -Take 100
+./scripts/Run-Benchmark.ps1 -Repetitions 5 -Take 100
 ~~~
 
 SQL Server jest wystawiony wyłącznie na localhost:14367, API na localhost:5087. Baza: `EfPerformanceLab`. Przy pierwszym uruchomieniu API tworzy tabele przez `EnsureCreatedAsync` i wykonuje idempotentny seed (tylko gdy brak zamówień). Po wstępnym uruchomieniu SQL Server i API mogą potrzebować chwili na inicjalizację. W przypadku problemów zobacz `docker compose logs api sql`.
@@ -45,14 +47,45 @@ SQL Server jest wystawiony wyłącznie na localhost:14367, API na localhost:5087
 - `Data`: te same zamówienia i pozycje dla wszystkich strategii.
 - `QueryStore.sql`: historyczne średnie CPU, czas trwania i logical reads *per zapytanie*. Nie sumuj ich bezmyślnie bez uwzględnienia liczby wykonań: N+1 to wiele krótkich poleceń. Query Store może agregować warianty i raportuje pomiary silnika SQL, nie HTTP.
 
+## Zmierzone wyniki — 22.11.2026
+
+Zobacz [RESULTS-2026-11-22.md](RESULTS-2026-11-22.md): przy 20 powtórzeniach mediana N+1 = **114,93 ms**, Include = **6,63 ms**, Projection = **6,20 ms**. W tamtej serii nie było jeszcze wariantu SplitQuery. Statystyki Query Store historyczne: średnie 11 logical reads dla zapytania pozycji, 14 dla Include i 14 dla Projection. **Nie są to porównania kosztów pojedynczego, zsynchronizowanego żądania**.
+
+## Kontrolowany eksperyment z przyrostami Query Store
+
+1. W SSMS połącz się z lokalnym `localhost,14367`, bazą `EfPerformanceLab`. Włącz na potrzeby labu `QUERY_CAPTURE_MODE = ALL`:
+
+~~~sql
+ALTER DATABASE EfPerformanceLab SET QUERY_STORE
+( OPERATION_MODE = READ_WRITE, QUERY_CAPTURE_MODE = ALL );
+~~~
+
+2. Zbuduj najnowszą wersję API z tagami zapytań:
+
+~~~powershell
+docker compose up -d --build
+./scripts/Test-Lab.ps1 -Take 100    # sprawdza 101 / 1 / 1 / 2 i zgodność danych
+~~~
+
+3. Rozgrzej warianty **przed** snapshotem (skrypt Test-Lab jest wystarczającym warm-up). W SSMS wykonaj [sql/01_QueryStoreSnapshot.sql](sql/01_QueryStoreSnapshot.sql) z `@Label = N'BEFORE'`.
+4. Bez innych klientów uruchom:
+
+~~~powershell
+./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -SkipWarmup
+~~~
+
+5. W SSMS wykonaj ponownie `sql/01_QueryStoreSnapshot.sql` po zmianie etykiety na `AFTER`. Następnie [sql/02_QueryStoreDelta.sql](sql/02_QueryStoreDelta.sql).
+
+Dla 10 powtórzeń i 100 zamówień oczekujemy **około** 1000 wykonań `NPLUSONE:ITEMS`, po 10 dla pozostałych podstawowych zapytań i 20 poleceń SQL dla `SPLIT`. Znaczniki oznaczają wariant, niekoniecznie pojedynczy `query_id`. Porównuj przyrosty, a nie historyczne sumy. Query Store jest agregowany asynchronicznie; przy opóźnieniach lub równoległym ruchu pomiar powtórz. Nie resetuj produkcyjnego Query Store.
+
 ## Zadania laboratoryjne
 
-1. Uruchom 3 endpointy z `take=10`, a potem `take=100`. Jak rośnie liczba poleceń SQL?
+1. Uruchom 4 endpointy z `take=10`, a potem `take=100`. Jak rośnie liczba poleceń SQL?
 2. Wykonaj warm-up i minimum 5 powtórzeń. Zapisz medianę, nie pojedynczy pomiar.
 3. Porównaj liczby zamówień i pozycji między odpowiedziami.
 4. Otwórz `sql/QueryStore.sql` w SSMS, wybierz bazę `EfPerformanceLab`, przeanalizuj powtarzane zapytania po `OrderId` i logical reads.
 5. Zmień liczbę pozycji na zamówienie, powtórz eksperyment i oceń transfer danych w `Include`.
-6. Dodatkowo porównaj `AsSplitQuery()` i oceń kompromis pomiędzy liczbą round-tripów a duplikowaniem kolumn w JOIN.
+6. Porównaj `AsSplitQuery()` i oceń kompromis pomiędzy liczbą round-tripów a duplikowaniem kolumn w JOIN.
 
 ## Wnioski, które należy zweryfikować
 
