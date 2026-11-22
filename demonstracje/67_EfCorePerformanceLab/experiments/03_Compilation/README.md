@@ -91,6 +91,45 @@ Skrypt zachowuje bazę SQL, nie wykonuje `docker compose down -v`, nie czyści Q
 - Zanotuj: wersję Windows, CPU, RAM, `docker version`, `docker info`, obraz SQL i `SELECT @@VERSION`. Dotychczasowe stanowisko: Intel Core i5-1035G1, 4C/8T, RAM 7,81 GiB, Windows 11 Pro build 26300. Nie zakładaj identycznej wersji CU SQL na podstawie poprzedniego laboratorium.
 - **Brak wyników = brak wniosków.** Skrypty przygotowują eksperyment; wartości powstaną dopiero po uruchomieniu na stanowisku.
 
+## Trzecia faza: diagnostyka CPU procesu, GC i alokacji
+
+Po czterech rundach porównawczych nadal nie należy przypisywać wszystkich różnic czasowych wyłącznie JIT/R2R. W tej fazie uruchamiamy **osobny test diagnostyczny** z opcjonalnym endpointem `/diag/runtime` (dostępnym wyłącznie przy `Lab__Diagnostics=true`). Główna implementacja czterech strategii EF Core nie została zmieniona.
+
+Z katalogu `67_EfCorePerformanceLab`:
+
+```powershell
+git pull --ff-only
+docker compose up -d sql
+
+./experiments/03_Compilation/Run-RuntimeDiagnostics.ps1 `
+    -Take 100 `
+    -Repetitions 30 `
+    -WarmupPerStrategy 5
+```
+
+Najpierw można przetestować jeden wariant:
+
+```powershell
+./experiments/03_Compilation/Run-RuntimeDiagnostics.ps1 -Modes jit -Take 100 -Repetitions 5
+```
+
+Skrypt zbuduje aplikację dla kolejnych wariantów JIT / R2R / Composite / No-tiering; sprawdzi zgodność wyników, rozgrzeje każdą strategię, a następnie zbierze po **30 odczytów czasu EF Core na wariant i strategię** (łącznie 480 zmierzonych żądań). Zapisze dwa pliki w `results/`:
+
+- `<token>-runtime-samples.csv` — czasy poszczególnych żądań;
+- `<token>-runtime-summary.csv` — mediany, delta czasu CPU procesu, delta łącznych alokacji, liczby kolekcji GC generacji 0/1/2 oraz stan sterty i working set.
+
+**Zakres metryk:** `Process.TotalProcessorTime`, `GC.GetTotalAllocatedBytes(false)` i `GC.CollectionCount` to liczniki **całego procesu**, nie tylko aktywnego żądania EF Core. Mierzymy przyrost między dwoma sondami `/diag/runtime`, więc wynik obejmuje także serwer HTTP, serializację JSON, ewentualną pracę w tle i koszt samych sond. `ProcessCpuMsPerRequest` i `ProcessAllocatedKBPerRequest` są średnimi przyrostami na żądanie, **nie osobno zmierzonym CPU/allocations jednej operacji**. `HeapSizeBytes` i working set to snapshoty, a nie przyrost alokacji. Zero kolekcji GC nie oznacza braku alokacji.
+
+W odróżnieniu od poprzedniego testu ta faza **nie pobiera nowych statystyk Query Store** — weryfikuje SQL commands w odpowiedziach i pozwala porównać metryki procesu. Historyczne pomiary Query Store zachowujemy bez modyfikacji. Dla niezależnych wyników należy powtórzyć przebieg z inną kolejnością `-Modes`, bez dodatkowego obciążenia hosta.
+
+Po ostatnim wariancie pozostaje włączony lokalny endpoint diagnostyczny (API nasłuchuje wyłącznie na `127.0.0.1` hosta). Aby przywrócić domyślną aplikację, bez endpointu diagnostycznego:
+
+```powershell
+docker compose up -d --no-deps --build --force-recreate api
+```
+
+Nie uruchamiaj dwóch skryptów benchmarku jednocześnie. Nie kasuj wolumenu SQL.
+
 ## Native AOT: osobna bramka zgodności
 
 **Nie przedstawiam Native AOT jako piątej gotowej, porównywalnej próbki.** EF Core 10 wymaga ostrożności przy AOT: prekompilacji zapytań, odpowiedniego modelu i weryfikacji dostawcy SQL Server, a minimalne API również musiałoby przejść analizę pod kątem zgodności z AOT. Samo ustawienie `PublishAot=true` nie wystarcza.
