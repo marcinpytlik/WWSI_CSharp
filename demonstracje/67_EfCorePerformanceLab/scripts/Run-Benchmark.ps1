@@ -4,7 +4,7 @@ param(
     [ValidateRange(1, 100)] [int] $Repetitions = 5
 )
 $ErrorActionPreference = "Stop"
-$strategies = @("nplusone", "include", "projection")
+$strategies = @("nplusone", "include", "projection", "split")
 Write-Host "Warm-up for each variant..."
 foreach ($s in $strategies) {
     $null = Invoke-RestMethod "$BaseUrl/api/orders/${s}?take=$Take"
