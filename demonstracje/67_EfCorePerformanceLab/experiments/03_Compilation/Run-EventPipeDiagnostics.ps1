@@ -13,7 +13,7 @@ param(
     [string[]] $Modes = @('jit'),
     [ValidateRange(1,100)] [int] $Take = 100,
     [ValidateRange(5,100)] [int] $Repetitions = 20,
-    [ValidateRange(30,180)] [int] $CaptureSeconds = 60,
+    [ValidateRange(30,3600)] [int] $CaptureSeconds = 300,
     [switch] $SkipTrace
 )
 $ErrorActionPreference = 'Stop'
@@ -102,34 +102,31 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     $artifact = if ($Kind -eq 'counters') { "$stamp.csv" } else { "$stamp.nettrace" }
     $log = "$stamp-capture.log"
     $exitFile = "$stamp.exit"
-    $duration = [TimeSpan]::FromSeconds($CaptureSeconds).ToString('dd\:hh\:mm\:ss')
-    if ($Kind -eq 'counters') {
-        Write-Host "Starting interactive PTY counters session: $stamp"
-        Invoke-Compose -Arguments @('exec','-d','profiler','/bin/bash','/tools/collect-counters.sh',$stamp)
-        $fifoReady = $false
-        $fifo = "/tmp/$stamp.fifo"
-        for ($n = 0; $n -lt 40; $n++) {
-            & docker compose --project-directory $root @files exec -T profiler test -p $fifo 2>$null
-            if ($LASTEXITCODE -eq 0) { $fifoReady = $true; break }
-            Start-Sleep -Milliseconds 250
-        }
-        if (-not $fifoReady) { throw "Counter PTY/FIFO did not initialize for $stamp" }
-    } else {
-        $command = "/tools/dotnet-trace collect --process-id 1 --duration $duration --profile dotnet-common,dotnet-sampled-thread-time --output /output/$artifact > /output/$log 2>&1; echo " + '$?' + " > /output/$exitFile"
-        Write-Host "Starting trace collection: $stamp"
-        Invoke-Compose -Arguments @('exec','-d','profiler','bash','-c',$command)
+    # Both collectors use the same PTY / FIFO control channel.
+    # dotnet-trace receives Enter; dotnet-counters receives q.
+    # CaptureSeconds remains a safety limit for the total workload duration.
+    Write-Host "Starting interactive PTY $Kind session: $stamp"
+    Invoke-Compose -Arguments @('exec','-d','profiler','/bin/bash','/tools/collect-counters.sh',$stamp,$Kind)
+    $fifoReady = $false
+    $fifo = "/tmp/$stamp.fifo"
+    for ($n = 0; $n -lt 40; $n++) {
+        & docker compose --project-directory $root @files exec -T profiler test -p $fifo 2>$null
+        if ($LASTEXITCODE -eq 0) { $fifoReady = $true; break }
+        Start-Sleep -Milliseconds 250
     }
+    if (-not $fifoReady) { throw "Diagnostic PTY/FIFO did not initialize for $stamp. Inspect $log" }
     Start-Sleep -Seconds 4
     $workloadWatch = [Diagnostics.Stopwatch]::StartNew()
     $workloadCsv = Run-Workload $Mode $Kind
     $workloadWatch.Stop()
-    if ($Kind -eq 'counters') {
-        $control = "printf q > /tmp/$stamp.fifo"
-        Invoke-Compose -Arguments @('exec','-T','profiler','bash','-c',$control)
+    if ($workloadWatch.Elapsed.TotalSeconds -gt $CaptureSeconds) {
+        Write-Warning ("Workload took {0:N1}s, exceeding the advisory CaptureSeconds={1}s. Trace remains complete because capture stops after workload." -f $workloadWatch.Elapsed.TotalSeconds,$CaptureSeconds)
     }
+    $inputCommand = if ($Kind -eq 'counters') { "printf q > /tmp/$stamp.fifo" } else { "printf '\\n' > /tmp/$stamp.fifo" }
+    Invoke-Compose -Arguments @('exec','-T','profiler','bash','-c',$inputCommand)
     $exitPath = Join-Path $resultsDir $exitFile
     $wait = [Diagnostics.Stopwatch]::StartNew()
-    $maxWait = if ($Kind -eq 'trace') { $CaptureSeconds + 40 } else { 35 }
+    $maxWait = 45
     while (-not (Test-Path -LiteralPath $exitPath) -and $wait.Elapsed.TotalSeconds -lt $maxWait) {
         Start-Sleep -Milliseconds 500
     }
