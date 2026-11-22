@@ -51,6 +51,36 @@ docker compose up -d --no-deps --build --force-recreate api
 
 W razie niepowodzenia budowania lub smoke testu eksperyment jest przerywany. Nie traktuj częściowego zestawu wyników jako kompletnego porównania.
 
+## Druga faza: powtarzalność i kolejność wariantów
+
+Pierwsza pełna seria wykazała różnice czasów pomiędzy JIT, ReadyToRun, Composite ReadyToRun i JIT bez Tiered Compilation. **Jedna seria nie wystarcza do przypisania różnic metodzie kompilacji**; dodatkowo zawsze uruchamiała warianty w tej samej kolejności.
+
+Dlatego druga faza stosuje **cztery rundy z przeplataną, zrównoważoną kolejnością** (plan Williamsa). Każda metoda występuje raz na każdej pozycji; dla każdej kombinacji `mode × strategy` zachowujemy osobne BEFORE/AFTER w Query Store.
+
+| Runda | Kolejność kompilacji |
+|---|---|
+| 1 | jit → r2r → no-tiering → composite |
+| 2 | r2r → composite → jit → no-tiering |
+| 3 | composite → no-tiering → r2r → jit |
+| 4 | no-tiering → jit → composite → r2r |
+
+Uruchom w katalogu `67_EfCorePerformanceLab`:
+
+```powershell
+git pull --ff-only
+./experiments/03_Compilation/Run-Repeatability.ps1 -Rounds 4 -Take 100 -Repetitions 10
+```
+
+Zachowaj spokój obciążenia na hoście; nie wykonuj równocześnie innego benchmarku ani zapytań do API. W tym ustawieniu powstaje łącznie **640 próbek aplikacyjnych**: 4 rundy × 4 warianty kompilacji × 4 strategie × 10 wywołań. Po każdej rundzie skrypt zapisuje punkt kontrolny, a na końcu:
+
+- `results/<batch>-rounds.csv` — wszystkie zestawienia z poszczególnych rund;
+- `results/<batch>-manifest.csv` — czas rozpoczęcia i kolejność w każdej rundzie;
+- `results/<batch>-rollup.csv` — mediana z median serii, ich zakres, mediana średnich CPU SQL oraz zakres logical reads.
+
+**Uwaga statystyczna:** „mediana z median” to opisowy wskaźnik powtarzalności, a nie jedna mediana ze wszystkich 40 pomiarów i nie test istotności. Surowe próbki poszczególnych serii pozostają w plikach `results/*-raw.csv`. Porównanie wariantów powinno również uwzględniać ich pozycję w rundach i rozrzut wyników.
+
+Skrypt zachowuje bazę SQL, nie wykonuje `docker compose down -v`, nie czyści Query Store i po zakończeniu pozostawia ostatnio uruchomiony wariant API. Przebieg nie usuwa wcześniejszych plików CSV.
+
 ## Kontrola warunków i interpretacja
 
 - `Test-Lab.ps1` musi potwierdzić identyczne odpowiedzi i polecenia: N+1 = 101, Include = 1, Projection = 1, Split = 2.
