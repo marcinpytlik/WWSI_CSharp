@@ -8,3 +8,4 @@ services:
         LAB_COMPILATION_MODE: "${LAB_COMPILATION_MODE:-jit}"
     environment:
       COMPlus_TieredCompilation: "${LAB_TIERED_COMPILATION:-1}"
+      Lab__Diagnostics: "${LAB_RUNTIME_DIAGNOSTICS:-false}"
