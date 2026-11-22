@@ -7,11 +7,11 @@ $ErrorActionPreference = "Stop"
 $strategies = @("nplusone", "include", "projection")
 Write-Host "Warm-up for each variant..."
 foreach ($s in $strategies) {
-    $null = Invoke-RestMethod "$BaseUrl/api/orders/$s?take=$Take"
+    $null = Invoke-RestMethod "$BaseUrl/api/orders/${s}?take=$Take"
 }
 $results = foreach ($run in 1..$Repetitions) {
     foreach ($s in $strategies) {
-        $response = Invoke-RestMethod "$BaseUrl/api/orders/$s?take=$Take"
+        $response = Invoke-RestMethod "$BaseUrl/api/orders/${s}?take=$Take"
         $itemTotal = @($response.data | ForEach-Object { $_.items.Count } | Measure-Object -Sum)[0].Sum
         [pscustomobject]@{
             Run = $run
@@ -40,7 +40,7 @@ Write-Host "=== Median of measured server-side EF operations ==="
 $summary | Sort-Object Strategy | Format-Table -AutoSize
 $path = Join-Path $PSScriptRoot "benchmark-results.csv"
 $results | Export-Csv -Path $path -NoTypeInformation -Encoding utf8
-Write-Host "CSV: $path (ignored by .gitignore? do not commit measurement results unintentionally)"
+Write-Host "CSV: $path"
 if (($summary | Select-Object -ExpandProperty Orders -Unique).Count -ne 1 -or
     ($summary | Select-Object -ExpandProperty Items -Unique).Count -ne 1) {
     throw "Results differ in cardinality. Compare the response payloads before performance conclusions."
