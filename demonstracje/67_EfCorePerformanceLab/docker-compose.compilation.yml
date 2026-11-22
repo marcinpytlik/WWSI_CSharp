@@ -1,0 +1,10 @@
+# Use ONLY as an override of docker-compose.yml, preserving the original SQL service and volume.
+# Example: docker compose -f docker-compose.yml -f docker-compose.compilation.yml up -d --no-deps --build api
+services:
+  api:
+    build:
+      dockerfile: demonstracje/67_EfCorePerformanceLab/docker/Api.Compilation.Dockerfile
+      args:
+        LAB_COMPILATION_MODE: "${LAB_COMPILATION_MODE:-jit}"
+    environment:
+      COMPlus_TieredCompilation: "${LAB_TIERED_COMPILATION:-1}"
