@@ -83,7 +83,7 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     $stamp = "$token-$Mode-$Kind"
     $artifact = if ($Kind -eq 'counters') { "$stamp.csv" } else { "$stamp.nettrace" }
     $log = "$stamp-capture.log"
-    $duration = [TimeSpan]::FromSeconds($CaptureSeconds).ToString('dd\\:hh\\:mm\\:ss')
+    $duration = [TimeSpan]::FromSeconds($CaptureSeconds).ToString('dd\:hh\:mm\:ss')
     if ($Kind -eq 'counters') {
         # dotnet-counters has no --duration; timeout sends SIGINT to finalize its CSV.
         $command = "timeout --signal=INT --kill-after=5s ${CaptureSeconds}s /tools/dotnet-counters collect --process-id 1 --refresh-interval 1 --format csv --counters System.Runtime --output /output/$artifact > /output/$log 2>&1"
