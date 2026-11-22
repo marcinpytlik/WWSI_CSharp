@@ -32,6 +32,7 @@ api.MapGet("/nplusone", async (LabDbContext db, SqlCommandCounter counter, int t
     using var measurement = counter.Begin();
     var sw = Stopwatch.StartNew();
     var orders = await db.Orders.AsNoTracking().OrderBy(x => x.Id).Take(take)
+        .TagWith("EFPLAB:NPLUSONE:ORDERS")
         .Select(x => new { x.Id, x.CustomerName }).ToListAsync(ct);
 
     // Antywzorzec: jawnie jedno dodatkowe SELECT na każde zamówienie.
@@ -40,7 +41,8 @@ api.MapGet("/nplusone", async (LabDbContext db, SqlCommandCounter counter, int t
     foreach (var order in orders)
     {
         var items = await db.OrderItems.AsNoTracking().Where(x => x.OrderId == order.Id)
-            .OrderBy(x => x.Id).Select(x => new OrderItemDto(x.Id, x.ProductName, x.Price, x.Quantity))
+            .OrderBy(x => x.Id).TagWith("EFPLAB:NPLUSONE:ITEMS")
+            .Select(x => new OrderItemDto(x.Id, x.ProductName, x.Price, x.Quantity))
             .ToListAsync(ct);
         output.Add(new OrderDto(order.Id, order.CustomerName, items));
     }
@@ -54,7 +56,8 @@ api.MapGet("/include", async (LabDbContext db, SqlCommandCounter counter, int ta
     using var measurement = counter.Begin();
     var sw = Stopwatch.StartNew();
     var orders = await db.Orders.AsNoTracking().AsSingleQuery()
-        .OrderBy(x => x.Id).Take(take).Include(x => x.Items).ToListAsync(ct);
+        .OrderBy(x => x.Id).Take(take).Include(x => x.Items)
+        .TagWith("EFPLAB:INCLUDE").ToListAsync(ct);
     var output = orders.Select(x => new OrderDto(x.Id, x.CustomerName,
         x.Items.OrderBy(i => i.Id).Select(i => new OrderItemDto(i.Id, i.ProductName, i.Price, i.Quantity)).ToList()))
         .ToList();
@@ -68,12 +71,28 @@ api.MapGet("/projection", async (LabDbContext db, SqlCommandCounter counter, int
     using var measurement = counter.Begin();
     var sw = Stopwatch.StartNew();
     var output = await db.Orders.AsNoTracking().AsSingleQuery().OrderBy(x => x.Id).Take(take)
+        .TagWith("EFPLAB:PROJECTION")
         .Select(x => new OrderDto(x.Id, x.CustomerName,
             x.Items.OrderBy(i => i.Id)
                 .Select(i => new OrderItemDto(i.Id, i.ProductName, i.Price, i.Quantity)).ToList()))
         .ToListAsync(ct);
     sw.Stop();
     return Results.Ok(new MeasuredResponse("projection", output.Count, measurement.Count, sw.Elapsed.TotalMilliseconds, output));
+});
+
+api.MapGet("/split", async (LabDbContext db, SqlCommandCounter counter, int take = 100, CancellationToken ct = default) =>
+{
+    if (take is < 1 or > 500) return Results.BadRequest(new { error = "take: 1..500" });
+    using var measurement = counter.Begin();
+    var sw = Stopwatch.StartNew();
+    var orders = await db.Orders.AsNoTracking().AsSplitQuery()
+        .OrderBy(x => x.Id).Take(take).Include(x => x.Items)
+        .TagWith("EFPLAB:SPLIT").ToListAsync(ct);
+    var output = orders.Select(x => new OrderDto(x.Id, x.CustomerName,
+        x.Items.OrderBy(i => i.Id).Select(i => new OrderItemDto(i.Id, i.ProductName, i.Price, i.Quantity)).ToList()))
+        .ToList();
+    sw.Stop();
+    return Results.Ok(new MeasuredResponse("split", output.Count, measurement.Count, sw.Elapsed.TotalMilliseconds, output));
 });
 
 app.Run();
