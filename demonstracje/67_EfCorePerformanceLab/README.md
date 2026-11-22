@@ -51,6 +51,28 @@ SQL Server jest wystawiony wyłącznie na localhost:14367, API na localhost:5087
 
 Zobacz [RESULTS-2026-11-22.md](RESULTS-2026-11-22.md): przy 20 powtórzeniach mediana N+1 = **114,93 ms**, Include = **6,63 ms**, Projection = **6,20 ms**. W tamtej serii nie było jeszcze wariantu SplitQuery. Statystyki Query Store historyczne: średnie 11 logical reads dla zapytania pozycji, 14 dla Include i 14 dla Projection. **Nie są to porównania kosztów pojedynczego, zsynchronizowanego żądania**.
 
+## Jeden skrypt porównujący wszystkie cztery strategie
+
+Najprościej uruchom **jeden skrypt** z katalogu demonstracji:
+
+~~~powershell
+git pull
+docker compose up -d --build
+./scripts/Run-All-Benchmark.ps1 -Take 100 -Repetitions 10
+~~~
+
+Wymagania: PowerShell 7, lokalny Docker Compose, zdrowy kontener SQL i API; Query Store w bazie `EfPerformanceLab` musi być w trybie `READ_WRITE` i `QUERY_CAPTURE_MODE = ALL`. Skrypt:
+
+1. Weryfikuje cztery endpointy i ich zgodność danych (`Test-Lab.ps1`), co zarazem rozgrzewa zapytania.
+2. Wykonuje oddzielny snapshot BEFORE i AFTER dla każdej strategii, bez zerowania Query Store.
+3. Uruchamia kontrolowaną serię tylko jednej strategii pomiędzy jej snapshotami.
+4. Zbiera metryki Query Store (wykonania, suma CPU, suma czasu i logical reads) i odrzuca niekompletne serie, jeżeli liczba SQL commandów różni się od oczekiwanej.
+5. Wyświetla tabelę: `MedianEfMs`, `SqlCommandsPerRequest`, `SqlCpuMsPerRequest`, `SqlDurationMsPerRequest`, `SqlLogicalReadsPerRequest`. Eksportuje `comparison-<token>.csv` i `benchmark-all-<token>.csv` do `scripts` (pliki ignorowane przez Git).
+
+`MedianEfMs` jest medianą stopwatch aplikacji, pozostałe trzy wartości kosztów SQL są **średnimi na żądanie** z przyrostów Query Store — nie są to te same statystyki rozkładu. W trakcie pomiarów nie uruchamiaj innych klientów ani narzędzi wysyłających zapytania do tabel labu. Wartości logic reads nie oznaczają fizycznych odczytów dyskowych.
+
+Skrypt wykonuje SQL przez `docker compose exec -T sql ... sqlcmd`; hasło jest odczytywane z `MSSQL_SA_PASSWORD` wewnątrz kontenera i nie należy wpisywać go w argumentach poleceń PowerShell. Ze względu na dydaktyczny charakter testów i zależność snapshotów od kształtów SQL, skrypt jest przeznaczony wyłącznie do tego lokalnego laboratorium.
+
 ## Kontrolowany eksperyment z przyrostami Query Store
 
 1. W SSMS połącz się z lokalnym `localhost,14367`, bazą `EfPerformanceLab`. Włącz na potrzeby labu `QUERY_CAPTURE_MODE = ALL`:
