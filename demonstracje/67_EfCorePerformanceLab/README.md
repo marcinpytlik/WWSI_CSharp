@@ -223,7 +223,19 @@ Starsza seria (20 powtórzeń, jeszcze bez SplitQuery) jest udokumentowana w [RE
 
 **Do oddania:** `comparison-<token>.csv`, `benchmark-all-<token>.csv`, krótki opis środowiska i wnioski do punktów 3–6. **Nie przesyłaj `.env` ani haseł.**
 
-## 9. Zatrzymanie i bezpieczeństwo
+## 9. Eksperyment 03 — JIT / ReadyToRun / Composite / bez Tiered Compilation
+
+Kolejnym, **oddzielnym etapem** jest badanie wpływu sposobu publikacji i kompilacji .NET na dokładnie te same cztery operacje EF Core. Przygotowałem cztery kontrolowane warianty, osobny Dockerfile i skrypt PowerShell zachowujący działający kontener SQL:
+
+[**Eksperyment 03 — instrukcja, metodologia i skrypt**](experiments/03_Compilation/README.md)
+
+~~~powershell
+./experiments/03_Compilation/Run-Experiment.ps1 -Take 100 -Repetitions 10
+~~~
+
+Warianty: `jit`, `r2r`, `composite`, `no-tiering`. Wszystkie są publikowane jako **self-contained linux-x64**, aby Composite ReadyToRun naprawdę działał. Native AOT jest na razie **osobnym zadaniem sprawdzenia zgodności**, a nie piątą zmierzoną konfiguracją. Skrypt tworzy CSV w `experiments/03_Compilation/results/`; nie ma jeszcze wyników tej serii.
+
+## 10. Zatrzymanie i bezpieczeństwo
 
 ~~~powershell
 docker compose down       # zatrzymuje kontenery, zachowuje wolumen danych SQL
