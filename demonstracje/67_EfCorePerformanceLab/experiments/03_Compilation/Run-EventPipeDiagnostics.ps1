@@ -101,37 +101,47 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     $stamp = "$token-$Mode-$Kind"
     $artifact = if ($Kind -eq 'counters') { "$stamp.csv" } else { "$stamp.nettrace" }
     $log = "$stamp-capture.log"
+    $exitFile = "$stamp.exit"
     $duration = [TimeSpan]::FromSeconds($CaptureSeconds).ToString('dd\:hh\:mm\:ss')
     if ($Kind -eq 'counters') {
-        # dotnet-counters has no --duration; timeout sends the documented graceful SIGTERM.
-        $command = "timeout --signal=TERM --kill-after=20s ${CaptureSeconds}s /tools/dotnet-counters collect --process-id 1 --refresh-interval 1 --format csv --counters System.Runtime --output /output/$artifact > /output/$log 2>&1"
+        Write-Host "Starting interactive PTY counters session: $stamp"
+        Invoke-Compose -Arguments @('exec','-d','profiler','/bin/bash','/tools/collect-counters.sh',$stamp)
+        $fifoReady = $false
+        $fifo = "/tmp/$stamp.fifo"
+        for ($n = 0; $n -lt 40; $n++) {
+            & docker compose --project-directory $root @files exec -T profiler test -p $fifo 2>$null
+            if ($LASTEXITCODE -eq 0) { $fifoReady = $true; break }
+            Start-Sleep -Milliseconds 250
+        }
+        if (-not $fifoReady) { throw "Counter PTY/FIFO did not initialize for $stamp" }
     } else {
-        $command = "/tools/dotnet-trace collect --process-id 1 --duration $duration --profile dotnet-common,dotnet-sampled-thread-time --output /output/$artifact > /output/$log 2>&1"
+        $command = "/tools/dotnet-trace collect --process-id 1 --duration $duration --profile dotnet-common,dotnet-sampled-thread-time --output /output/$artifact > /output/$log 2>&1; echo " + '$?' + " > /output/$exitFile"
+        Write-Host "Starting trace collection: $stamp"
+        Invoke-Compose -Arguments @('exec','-d','profiler','bash','-c',$command)
     }
-    Write-Host "Capturing $Kind for mode $Mode (PID 1 inside shared namespace)..."
-    Invoke-Compose -Arguments @('exec','-d','profiler','bash','-c',$command)
-    # Allow EventPipe subscription to start before workload.
     Start-Sleep -Seconds 4
     $workloadWatch = [Diagnostics.Stopwatch]::StartNew()
     $workloadCsv = Run-Workload $Mode $Kind
     $workloadWatch.Stop()
-    # Collection duration is fixed to capture background/runtime activity as well.
-    $remaining = [math]::Max(0, ($CaptureSeconds + 5) - $workloadWatch.Elapsed.TotalSeconds - 4)
-    if ($remaining -gt 0) { Start-Sleep -Seconds ([math]::Ceiling($remaining)) }
-    # Give diagnostics tooling time to flush output after graceful termination.
-    $path = Join-Path $resultsDir $artifact
-    $waitForFile = [Diagnostics.Stopwatch]::StartNew()
-    while ((-not (Test-Path -LiteralPath $path)) -and $waitForFile.Elapsed.TotalSeconds -lt 25) {
+    if ($Kind -eq 'counters') {
+        $control = "printf q > /tmp/$stamp.fifo"
+        Invoke-Compose -Arguments @('exec','-T','profiler','bash','-c',$control)
+    }
+    $exitPath = Join-Path $resultsDir $exitFile
+    $wait = [Diagnostics.Stopwatch]::StartNew()
+    $maxWait = if ($Kind -eq 'trace') { $CaptureSeconds + 40 } else { 35 }
+    while (-not (Test-Path -LiteralPath $exitPath) -and $wait.Elapsed.TotalSeconds -lt $maxWait) {
         Start-Sleep -Milliseconds 500
     }
-    if (-not (Test-Path -LiteralPath $path)) {
+    if (-not (Test-Path -LiteralPath $exitPath)) {
         $logPath = Join-Path $resultsDir $log
-        $logTail = if (Test-Path -LiteralPath $logPath) {
-            (Get-Content -LiteralPath $logPath -Tail 30) -join ' | '
-        } else { 'No capture log found' }
-        $profilerPs = @(& docker compose --project-directory $root @files exec -T profiler ps -eo pid,ppid,args 2>&1)
-        throw "No artifact $artifact. Capture log: $logTail. Profiler processes: $($profilerPs -join '; ')"
+        $details = if (Test-Path -LiteralPath $logPath) {
+            (Get-Content -LiteralPath $logPath -Tail 30) -join '; '
+        } else { 'Capture log missing' }
+        throw "Capture $stamp did not close cleanly. Log: $details"
     }
+    $exitCode = (Get-Content -LiteralPath $exitPath -Raw).Trim()
+    if ($exitCode -ne '0') { throw "Capture $stamp exit code=$exitCode. Inspect $log" }
     $size = Verify-Output $artifact
     $manifest.Add([pscustomobject]@{
         Token=$token; Mode=$Mode; Capture=$Kind
@@ -139,7 +149,7 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
         WorkloadSeconds=[math]::Round($workloadWatch.Elapsed.TotalSeconds,2)
         Artifact=$artifact; ArtifactBytes=$size
         WorkloadCsv=(Split-Path $workloadCsv -Leaf)
-        Log=$log; CollectedUtc=(Get-Date).ToUniversalTime().ToString('o')
+        Log=$log; ToolExitCode=$exitCode; CollectedUtc=(Get-Date).ToUniversalTime().ToString('o')
     })
     $manifest | Export-Csv -LiteralPath (Join-Path $resultsDir "$token-manifest.csv") -NoTypeInformation -Encoding utf8
     Write-Host "PASS $Mode $Kind : $artifact ($size bytes)"
