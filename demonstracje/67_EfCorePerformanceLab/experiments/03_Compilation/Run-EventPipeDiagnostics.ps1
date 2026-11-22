@@ -122,7 +122,7 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     if ($workloadWatch.Elapsed.TotalSeconds -gt $CaptureSeconds) {
         Write-Warning ("Workload took {0:N1}s, exceeding the advisory CaptureSeconds={1}s. Trace remains complete because capture stops after workload." -f $workloadWatch.Elapsed.TotalSeconds,$CaptureSeconds)
     }
-    $inputCommand = if ($Kind -eq 'counters') { "printf q > /tmp/$stamp.fifo" } else { "printf '\\n' > /tmp/$stamp.fifo" }
+    $inputCommand = if ($Kind -eq 'counters') { "printf q > /tmp/$stamp.fifo" } else { "echo > /tmp/$stamp.fifo" }
     Invoke-Compose -Arguments @('exec','-T','profiler','bash','-c',$inputCommand)
     $exitPath = Join-Path $resultsDir $exitFile
     $wait = [Diagnostics.Stopwatch]::StartNew()
