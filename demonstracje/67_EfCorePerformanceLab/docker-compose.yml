@@ -1,0 +1,34 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Copy env.template to .env and set SQL_SA_PASSWORD}"
+    ports:
+      - "127.0.0.1:14367:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  api:
+    build:
+      context: ../..
+      dockerfile: demonstracje/67_EfCorePerformanceLab/docker/Api.Dockerfile
+    ports:
+      - "127.0.0.1:5087:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Lab__Initialize: "true"
+      ConnectionStrings__Lab: "Server=sql,1433;Database=EfPerformanceLab;User Id=sa;Password=${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+    depends_on:
+      sql:
+        condition: service_healthy
+
+volumes:
+  sql_data:
