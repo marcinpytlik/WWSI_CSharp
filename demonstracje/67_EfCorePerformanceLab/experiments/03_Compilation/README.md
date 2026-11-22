@@ -199,9 +199,9 @@ Dokumentacja techniczna: [ReadyToRun](https://learn.microsoft.com/dotnet/core/de
 
 Ukończono rejestrację czterech wariantów, 20 iteracji na strategię i rodzaj profilowania. Dla serii **3b971dd5** zapisano łącznie 640 pomiarów operacji EF Core i osiem plików diagnostycznych. Opublikowano raport [FINAL-REPORT-2026-11-22.md](FINAL-REPORT-2026-11-22.md) z wynikami i ograniczeniami metodologicznymi.
 
-**Uwaga historyczna:** pierwotna seria 3b971dd5 korzystała ze sztywnego limitu 150 sekund dla `dotnet-trace`; podczas gdy workload trwał około 168–170 sekund. Dlatego wnioski raportu wynikają z pełnych CSV workloadu i liczników, **a nie z niekompletnych śladów .nettrace**. W aktualnej wersji skryptu usunięto to ograniczenie, ale ta poprawka wymaga osobnego testu integracyjnego po pobraniu nowego kodu.
+**Uwaga historyczna:** pierwotna seria 3b971dd5 korzystała ze sztywnego limitu 150 sekund dla `dotnet-trace`; podczas gdy workload trwał około 168–170 sekund. Dlatego wnioski raportu wynikają z pełnych CSV workloadu i liczników, **a nie z niekompletnych śladów .nettrace**. W aktualnej wersji skryptu usunięto to ograniczenie. **Test integracyjny JIT przeszedł 22.11.2026**: token `b8e2a335`, `PASS jit counters` (266456 B), `PASS jit trace` (26108814 B). To potwierdza zamykanie i zapis po workloadzie, nie weryfikuje jeszcze zawartości osi czasu śladu.
 
-Weryfikacja nowej obsługi trace, bez ponawiania całego czterowariantowego benchmarku:
+Aby odtworzyć potwierdzony test nowej obsługi trace, bez ponawiania całego czterowariantowego benchmarku:
 
 ```powershell
 git pull --ff-only
@@ -212,4 +212,4 @@ git pull --ff-only
     -CaptureSeconds 300
 ```
 
-Oczekiwane: `PASS jit counters`, `PASS jit trace`, pliki CSV i `.nettrace`; z manifeście powinny wynikać wartości `WorkloadSeconds` dla obydwu sesji. W tym eksperymencie nie są automatycznie publikowane surowe wyniki.
+Oczekiwane: `PASS jit counters`, `PASS jit trace`, pliki CSV i `.nettrace`; w manifeście powinny być wartości `WorkloadSeconds` dla obydwu sesji. W tym eksperymencie nie są automatycznie publikowane surowe wyniki.
