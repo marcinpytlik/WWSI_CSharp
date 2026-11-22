@@ -31,7 +31,7 @@ Invoke-RestMethod http://localhost:5087/health
 Invoke-RestMethod 'http://localhost:5087/api/orders/nplusone?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
 Invoke-RestMethod 'http://localhost:5087/api/orders/include?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
 Invoke-RestMethod 'http://localhost:5087/api/orders/projection?take=100' | Select-Object strategy,orders,sqlCommands,elapsedMs
-./scripts/Run-Benchmark.ps1 -Repetitions 5 -Take 100
+./scripts/Test-Lab.ps1 -Take 100\n./scripts/Run-Benchmark.ps1 -Repetitions 5 -Take 100
 ~~~
 
 SQL Server jest wystawiony wyłącznie na localhost:14367, API na localhost:5087. Baza: `EfPerformanceLab`. Przy pierwszym uruchomieniu API tworzy tabele przez `EnsureCreatedAsync` i wykonuje idempotentny seed (tylko gdy brak zamówień). Po wstępnym uruchomieniu SQL Server i API mogą potrzebować chwili na inicjalizację. W przypadku problemów zobacz `docker compose logs api sql`.
