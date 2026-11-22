@@ -60,9 +60,9 @@ try {
         $env:LAB_TIERED_COMPILATION = if ($mode -eq 'no-tiering') { '0' } else { '1' }
 
         # Build outside the readiness timer. The same source, dependencies and publish model are used.
-        Invoke-Compose @('build','api')
+        Invoke-Compose -Arguments @('build','api')
         $startup = [Diagnostics.Stopwatch]::StartNew()
-        Invoke-Compose @('up','-d','--no-deps','--force-recreate','--no-build','api')
+        Invoke-Compose -Arguments @('up','-d','--no-deps','--force-recreate','--no-build','api')
         $ready = $false
         while ($startup.Elapsed.TotalSeconds -lt $ReadyTimeoutSeconds) {
             try {
