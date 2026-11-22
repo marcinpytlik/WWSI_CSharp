@@ -58,6 +58,8 @@ EXEC sys.sp_query_store_flush_db;
     JOIN sys.query_store_plan AS p ON p.query_id = q.query_id
     JOIN sys.query_store_runtime_stats AS rs ON rs.plan_id = p.plan_id
     WHERE rs.execution_type = 0
+      -- Nie przechwytuj skryptu snapshotu: jego tekst zawiera wzorce jako literały.
+      AND CHARINDEX(N'EfLabQueryStoreSnapshots', qt.query_sql_text) = 0
 )
 INSERT dbo.EfLabQueryStoreSnapshots
     (CaptureId, Label, CapturedUtc, QueryId, PlanId, Tag, Executions,
