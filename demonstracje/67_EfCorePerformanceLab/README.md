@@ -233,9 +233,17 @@ Kolejnym, **oddzielnym etapem** jest badanie wpływu sposobu publikacji i kompil
 ./experiments/03_Compilation/Run-Experiment.ps1 -Take 100 -Repetitions 10
 ~~~
 
-Warianty: `jit`, `r2r`, `composite`, `no-tiering`. Wszystkie są publikowane jako **self-contained linux-x64**, aby Composite ReadyToRun naprawdę działał. Native AOT jest na razie **osobnym zadaniem sprawdzenia zgodności**, a nie piątą zmierzoną konfiguracją. Skrypt tworzy CSV w `experiments/03_Compilation/results/`; nie ma jeszcze wyników tej serii.
+Warianty: `jit`, `r2r`, `composite`, `no-tiering`. Wszystkie są publikowane jako **self-contained linux-x64**, aby Composite ReadyToRun naprawdę działał. Native AOT jest na razie **osobnym zadaniem sprawdzenia zgodności**, a nie piątą zmierzoną konfiguracją. Skrypt tworzy CSV w `experiments/03_Compilation/results/`. Wyniki serii, wraz z etapem EventPipe i ograniczeniami metodologii, opisuje [raport końcowy Demo 67](experiments/03_Compilation/FINAL-REPORT-2026-11-22.md).
 
-## 10. Zatrzymanie i bezpieczeństwo
+## 10. Raport końcowy i materiał do publikacji
+
+- **[Raport końcowy: EF Core + Query Store + diagnostyka .NET 10](experiments/03_Compilation/FINAL-REPORT-2026-11-22.md)** — wyniki, metodologia, liczba SQL, mediany, CPU, logical reads i ograniczenia EventPipe.
+- **[Scenariusz publikacji SQLManiak](experiments/03_Compilation/PUBLICATION-DRAFT-2026-11-22.md)** — szkic wpisu i zarys artykułu do autorskiej redakcji.
+- [Eksperyment 03](experiments/03_Compilation/README.md) — odtwarzalna instrukcja czterech faz, skrypty PowerShell i pliki CSV.
+
+**Status:** etapy zbierania danych zakończono 22.11.2026; zmiana kończenia `dotnet-trace` po workloadzie została dodana później i wymaga potwierdzenia w Docker Desktop. Ślady `.nettrace` z poprzedniej serii były ucięte czasowo, co opisano w raporcie. Nie interpretuj rozmiaru pliku śladu jako miary CPU lub pamięci.
+
+## 11. Zatrzymanie i bezpieczeństwo
 
 ~~~powershell
 docker compose down       # zatrzymuje kontenery, zachowuje wolumen danych SQL
