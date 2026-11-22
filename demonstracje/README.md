@@ -1,4 +1,4 @@
-# Demonstracje — 65 mini-projektów
+# Demonstracje — 67 numerowanych przykładów
 
 Gotowe, małe aplikacje do pokazania na zajęciach (5–15 min każde).
 Każda ma `src` + testy xUnit. Nie zastępują laboratoriów — to **żywe przykłady**
