@@ -15,7 +15,7 @@ Seed dodaje **100 zamówień po 10 pozycji = 1100 wierszy**. Każdy endpoint zwr
 | /api/orders/projection | Projekcja `Select` bez materializowania encji | 1 |
 | /api/orders/split | `Include` + `AsSplitQuery()` (zapytanie główne i kolekcja) | 2 |
 
-N+1 jest **celowo zaprogramowane jawną pętlą**, bez lazy-loading proxies, tak by efekt był deterministyczny. Dla porównania są używane `AsNoTracking()`, uporządkowanie i identyczne DTO. Znaczniki `TagWith("EFPLAB:...")` rozpoznają warianty w Query Store bez przywiązywania się do `query_id`. Wyniki latency, logical reads i CPU **należy zmierzyć**, a nie traktować obrazka promocyjnego jako wyniku eksperymentu.
+N+1 jest **celowo zaprogramowane jawną pętlą**, bez lazy-loading proxies, tak by efekt był deterministyczny. Dla porównania są używane `AsNoTracking()`, uporządkowanie i identyczne DTO. Zapytania mają znaczniki `TagWith("EFPLAB:...")`, przydatne np. w logach EF, lecz Query Store nie musi zachować tych komentarzy. Snapshoty rozpoznają kształt SQL bez przywiązywania się do `query_id`. Wyniki latency, logical reads i CPU **należy zmierzyć**, a nie traktować obrazka promocyjnego jako wyniku eksperymentu.
 
 ## Uruchomienie
 
@@ -67,16 +67,18 @@ docker compose up -d --build
 ./scripts/Test-Lab.ps1 -Take 100    # sprawdza 101 / 1 / 1 / 2 i zgodność danych
 ~~~
 
-3. Rozgrzej warianty **przed** snapshotem (skrypt Test-Lab jest wystarczającym warm-up). W SSMS wykonaj [sql/01_QueryStoreSnapshot.sql](sql/01_QueryStoreSnapshot.sql) z `@Label = N'BEFORE'`.
-4. Bez innych klientów uruchom:
+3. Rozgrzej warianty **przed** snapshotem (skrypt Test-Lab jest wystarczającym warm-up). W SSMS wykonaj [sql/01_QueryStoreSnapshot.sql](sql/01_QueryStoreSnapshot.sql) z `@Label = N'BEFORE'`. Skrypt powinien pokazać kategorie zapytań, a nie zero wierszy.
+4. Bez innych klientów uruchom **tylko jedną strategię**, np.:
 
 ~~~powershell
-./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -SkipWarmup
+./scripts/Run-Benchmark.ps1 -Take 100 -Repetitions 10 -SkipWarmup -Strategy nplusone
 ~~~
 
-5. W SSMS wykonaj ponownie `sql/01_QueryStoreSnapshot.sql` po zmianie etykiety na `AFTER`. Następnie [sql/02_QueryStoreDelta.sql](sql/02_QueryStoreDelta.sql).
+5. W SSMS wykonaj ponownie `sql/01_QueryStoreSnapshot.sql` po zmianie etykiety na `AFTER`. Następnie [sql/02_QueryStoreDelta.sql](sql/02_QueryStoreDelta.sql). Powtórz cały cykl BEFORE → osobna strategia → AFTER → delta dla `include`, `projection` i `split`.
 
-Dla 10 powtórzeń i 100 zamówień oczekujemy **około** 1000 wykonań `NPLUSONE:ITEMS`, po 10 dla pozostałych podstawowych zapytań i 20 poleceń SQL dla `SPLIT`. Znaczniki oznaczają wariant, niekoniecznie pojedynczy `query_id`. Porównuj przyrosty, a nie historyczne sumy. Query Store jest agregowany asynchronicznie; przy opóźnieniach lub równoległym ruchu pomiar powtórz. Nie resetuj produkcyjnego Query Store.
+**Dlaczego tak?** Query Store w zaobserwowanym środowisku nie zachował komentarzy `TagWith("EFPLAB:...")` w przechowywanym tekście SQL. Oryginalny filtr `LIKE '%EFPLAB:%'` dawał `BEFORE = 0`, `AFTER = 1` (przypadkowo przechwytując tekst samego zapytania diagnostycznego). Poprawione snapshoty rozpoznają rzeczywiste kształty zapytań SQL, używając `CHARINDEX` z dosłownymi fragmentami. Nie wymagają stałych `query_id`, ale **zależą od kształtu SQL generowanego przez tę wersję EF Core**.
+
+`SHARED:ORDERS` oznacza SELECT wspólny dla N+1 i SplitQuery, dlatego należy uruchamiać pomiary osobno. Przy `take=100` i `Repetitions=10`: N+1 daje około 10 wykonań `SHARED:ORDERS` i 1000 `NPLUSONE:ITEMS`; SplitQuery około 10 `SHARED:ORDERS` i 10 `SPLIT:ITEMS`. Query Store gromadzi metryki asynchronicznie; przy opóźnieniach albo dodatkowym ruchu wynik może odbiegać od oczekiwań. Nie resetuj produkcyjnego Query Store.
 
 ## Zadania laboratoryjne
 
