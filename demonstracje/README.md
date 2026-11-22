@@ -77,5 +77,7 @@ dotnet run --project demonstracje/01_KalkulatorCli/src -- add 2 3
 | 63 | [Specification](63_Specification/) | 4–5 | `ISpecification<T>` na liście zamówień |
 | 64 | [Template Method](64_TemplateMethod/) | 4–5 | import CSV/JSON, wspólna walidacja |
 | 65 | [Null Object](65_NullObject/) | 3–4 | `NoDiscount` zamiast `null` |
+| 66 | [Web API + RabbitMQ + Redis + SQL](66_WebApiRabbitRedisSql/) | 5 | Outbox, idempotencja, worker i testy awarii |
+| 67 | [EF Core Performance Lab](67_EfCorePerformanceLab/) | 5 | N+1 vs Include vs Projection, SQL counter, Query Store |
 
 Kolejność na zajęciach: **01–02, 13–15, 65** (sem. 3), **03–06, 16–19, 48–49, 51–52** (sem. 4), **07–09, 20–23, 25, 30, 33–38, 50, 53–58** (sem. 5), **10, 26–28, 44–47, 62–64** (wzorce), **11–12, 24, 29, 31–32, 39–43, 59–61** na zajęcia z Dockerem / infrastrukturą.
