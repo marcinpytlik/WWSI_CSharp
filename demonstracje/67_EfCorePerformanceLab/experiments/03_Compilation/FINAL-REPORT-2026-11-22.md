@@ -68,7 +68,7 @@ Zwraca uwagę niewielka aktywność kompilacji metod w okresie rejestracji `no-t
 
 ## 4. Ograniczenia metodologiczne
 
-1. **Sztywny limit śladu w serii historycznej.** `dotnet-trace --duration 150s` kończył rejestrowanie, podczas gdy 20 powtórzeń workloadu trwało około 168–170 s. CSV z czasami żądań są kompletne, ale `.nettrace` nie pokrywa pełnej serii. Po tej obserwacji skrypt zmieniono na zakończenie **Enter po workloadzie**, przy użyciu PTY/FIFO. Ta poprawka wymaga testu na stanowisku.
+1. **Sztywny limit śladu w serii historycznej.** `dotnet-trace --duration 150s` kończył rejestrowanie, podczas gdy 20 powtórzeń workloadu trwało około 168–170 s. CSV z czasami żądań są kompletne, ale `.nettrace` nie pokrywa pełnej serii. Po tej obserwacji skrypt zmieniono na zakończenie **Enter po workloadzie**, przy użyciu PTY/FIFO. **Test integracyjny na stanowisku zakończył się PASS** 22.11.2026: token `b8e2a335`, counters CSV 266456 B i trace NETTRACE 26108814 B. Wciąż nie analizowano wewnętrznej osi czasu zdarzeń tego śladu.
 2. **Ślady EventPipe nie zostały odczytane.** Nie ustalamy przyczyn większego pliku Composite (około 157 MB) bez analizy samych zdarzeń.
 3. **Koszt profilowania.** Wyników z 03D nie porównujemy jeden do jednego z czasami 03A/03B bez profilerów.
 4. **Kolejność i liczba powtórzeń.** 03D wykonano w kolejności jit → r2r → composite → no-tiering; strategia N+1 → Include → Projection → Split. Nie jest to samodzielna próba statystycznego wykazania przewagi kompilacji.
@@ -87,7 +87,7 @@ Zwraca uwagę niewielka aktywność kompilacji metod w okresie rejestracji `no-t
 
 1. Uruchom `scripts/Test-Lab.ps1` i `scripts/Run-All-Benchmark.ps1`, sprawdź `QUERY_CAPTURE_MODE = ALL`.
 2. Dla powtarzalności kompilacji użyj `experiments/03_Compilation/Run-Repeatability.ps1`; dla diagnostyki `Run-EventPipeDiagnostics.ps1`.
-3. Zweryfikuj poprawioną obsługę `dotnet-trace` na jednym trybie `jit` i zachowaj manifest, log, CSV oraz ślad.
+3. Zakończono weryfikację automatycznego zamykania `dotnet-trace` na trybie `jit` (`b8e2a335`, PASS). Osobnym zadaniem jest analiza osi czasu zdarzeń zapisanego śladu.
 4. Surowe artefakty nie są automatycznie publikowane. Nie umieszczaj w repozytorium `.env`, haseł ani dużych plików `.nettrace`.
 
-**Źródła danych:** `README.md` Demo 67, raport pomiarów Query Store z 22.11.2026, lokalna seria `3b971dd5`, eksport `3b971dd5-analysis.zip`. Raport dokumentuje **dokonane pomiary**, a nie wynik nieuruchomionej jeszcze korekty śladu.
+**Źródła danych:** `README.md` Demo 67, raport pomiarów Query Store z 22.11.2026, lokalna seria `3b971dd5`, eksport `3b971dd5-analysis.zip`. Raport dokumentuje **dokonane pomiary** oraz test integracyjny poprawionego mechanizmu zapisu śladu; nie opisuje analizy zawartości `.nettrace`.
