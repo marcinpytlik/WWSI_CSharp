@@ -2,10 +2,11 @@ param(
     [string] $BaseUrl = "http://localhost:5087",
     [ValidateRange(1, 500)] [int] $Take = 100,
     [ValidateRange(1, 100)] [int] $Repetitions = 5,
-    [switch] $SkipWarmup
+    [switch] $SkipWarmup,
+    [ValidateSet("all", "nplusone", "include", "projection", "split")] [string] $Strategy = "all"
 )
 $ErrorActionPreference = "Stop"
-$strategies = @("nplusone", "include", "projection", "split")
+$strategies = if ($Strategy -eq "all") { @("nplusone", "include", "projection", "split") } else { @($Strategy) }
 if (-not $SkipWarmup) {
     Write-Host "Warm-up for each variant..."
     foreach ($s in $strategies) {
