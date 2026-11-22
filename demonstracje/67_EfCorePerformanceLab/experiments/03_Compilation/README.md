@@ -130,6 +130,62 @@ docker compose up -d --no-deps --build --force-recreate api
 
 Nie uruchamiaj dwóch skryptów benchmarku jednocześnie. Nie kasuj wolumenu SQL.
 
+## Czwarta faza: EventPipe — dotnet-counters i dotnet-trace
+
+Ta faza jest **profilowaniem**, nie próbą odtworzenia liczb z poprzednich benchmarków. Zebrane wcześniej 640 pomiarów i pomiary CPU/alokacji pozostają nienaruszone. Uruchamiamy oddzielny kontener `profiler` z narzędziami .NET i nie instalujemy ich w obrazie API. Profilowanie wymaga **wspólnej przestrzeni PID oraz współdzielonego `/tmp`**, ponieważ .NET zapisuje tam gniazdo diagnostyczne. Taką konfigurację dodaje plik `docker-compose.diagnostics.yml`.
+
+Najpierw szybki test jednego wariantu z samymi licznikami (przy istniejącym `docker compose up -d sql`):
+
+```powershell
+git pull --ff-only
+
+./experiments/03_Compilation/Run-EventPipeDiagnostics.ps1 `
+    -Modes jit `
+    -Take 100 `
+    -Repetitions 10 `
+    -CaptureSeconds 30 `
+    -SkipTrace
+```
+
+Następnie pełny pomiar (każdy wariant posiada **osobną** sesję liczników i śladu):
+
+```powershell
+./experiments/03_Compilation/Run-EventPipeDiagnostics.ps1 `
+    -Modes jit,r2r,composite,no-tiering `
+    -Take 100 `
+    -Repetitions 20 `
+    -CaptureSeconds 60
+```
+
+**Jak działa skrypt:** buduje aplikację i narzędzia, odtwarza wyłącznie usługę `api`, uruchamia `profiler` w przestrzeni PID API, sprawdza widoczność procesu poleceniem `dotnet-counters ps`, wykonuje smoke test i warm-up. Następnie zbiera `System.Runtime` do CSV i osobno ślad EventPipe z profilami `dotnet-common` (m.in. GC/JIT/kompilacja) oraz `dotnet-sampled-thread-time` (próbkowanie wątków). Każdej sesji towarzyszy ten sam zestaw żądań `nplusone/include/projection/split`. Pomiary są rozdzielone: nie uruchamiamy dwóch narzędzi diagnostycznych jednocześnie.
+
+Pliki wynikowe:
+
+- `results/<token>-<mode>-counters.csv` — seria czasowa liczników runtime;
+- `results/<token>-<mode>-trace.nettrace` — ślad EventPipe do przejrzenia w PerfView, Visual Studio lub konwersji przez `dotnet-trace`;
+- `results/<token>-<mode>-<counters|trace>-workload.csv` — czasy operacji mierzone w czasie profilowania;
+- `results/<token>-<mode>-<counters|trace>-capture.log` — log działania narzędzia;
+- `results/<token>-manifest.csv` — kontrola kompletności i nazw plików.
+
+**Ważne ograniczenia:**
+- Narzędzia dołączają po starcie procesu i **nie obejmują jego inicjalizacji**; ślad nie jest pomiarem cold start/JIT startowego.
+- `dotnet-counters` próbuje otrzymać SIGINT po upływie `CaptureSeconds`, aby zapisać CSV. `dotnet-trace` kończy zbieranie po wskazanym `--duration`. Jeśli plik jest pusty/brakujący, sprawdź `*-capture.log`.
+- Profilowanie samo wpływa na wykorzystanie zasobów; pomiarów `*-workload.csv` z tej fazy **nie należy bezpośrednio porównywać** z wcześniejszymi pomiarami bez narzędzi.
+- Liczniki są próbkowane z interwałem 1 s, a krótkie serie HTTP mogą się zakończyć przed końcem śladu; warto przejrzeć artefakty i przedłużyć serię, jeśli potrzeba. Same pliki `.nettrace` **nie dowodzą**, że GC czy JIT były przyczyną różnic. Trzeba najpierw przeanalizować zdarzenia i ich czas.
+- `profiler` działa jako root wyłącznie w lokalnym laboratorium, aby połączyć się z procesem. Nie przenoś tej konfiguracji do produkcji.
+- Nie wykonujemy `docker compose down -v`; wolumen SQL pozostaje nienaruszony. Nowy wolumen `lab_diag_tmp` zawiera tylko gniazda diagnostyczne.
+- Ślady mogą zawierać nazwy metod, stosy oraz pośrednio informacje o aplikacji. Nie publikuj surowych artefaktów z wrażliwego środowiska; tutaj laboratorium pracuje na syntetycznych danych.
+
+Po zakończeniu i obejrzeniu wyników przywróć standardowe API i usuń usługę profilującą bez dotykania SQL:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.compilation.yml -f docker-compose.diagnostics.yml --profile diagnostics stop profiler
+docker compose -f docker-compose.yml -f docker-compose.compilation.yml -f docker-compose.diagnostics.yml --profile diagnostics rm -f profiler
+docker compose up -d --no-deps --build --force-recreate api
+```
+
+Oficjalne źródła: [Diagnostics in Linux containers](https://learn.microsoft.com/dotnet/core/diagnostics/diagnostics-in-containers), [dotnet-counters](https://learn.microsoft.com/dotnet/core/diagnostics/dotnet-counters), [dotnet-trace](https://learn.microsoft.com/dotnet/core/diagnostics/dotnet-trace).
+
 ## Native AOT: osobna bramka zgodności
 
 **Nie przedstawiam Native AOT jako piątej gotowej, porównywalnej próbki.** EF Core 10 wymaga ostrożności przy AOT: prekompilacji zapytań, odpowiedniego modelu i weryfikacji dostawcy SQL Server, a minimalne API również musiałoby przejść analizę pod kątem zgodności z AOT. Samo ustawienie `PublishAot=true` nie wystarcza.
