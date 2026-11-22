@@ -3,7 +3,8 @@ $ErrorActionPreference = "Stop"
 $cases = @(
     @{ Name = "nplusone"; ExpectedCommands = $Take + 1 },
     @{ Name = "include"; ExpectedCommands = 1 },
-    @{ Name = "projection"; ExpectedCommands = 1 }
+    @{ Name = "projection"; ExpectedCommands = 1 },
+    @{ Name = "split"; ExpectedCommands = 2 }
 )
 $all = @{}
 foreach ($case in $cases) {
@@ -17,9 +18,9 @@ foreach ($case in $cases) {
     Write-Host "PASS $name : $($response.orders) orders, $($response.sqlCommands) SQL commands"
 }
 $baseline = $all["nplusone"].data | ConvertTo-Json -Depth 20 -Compress
-foreach ($name in "include","projection") {
+foreach ($name in "include","projection","split") {
     $candidate = $all[$name].data | ConvertTo-Json -Depth 20 -Compress
     if ($candidate -cne $baseline) { throw "$name returned different orders/items." }
     Write-Host "PASS $name : payload matches nplusone"
 }
-Write-Host "PASS all assertions (expected 100 orders × 10 items at take=100)."
+Write-Host "PASS all assertions (seed: 100 orders × 10 items; take=$Take)."
