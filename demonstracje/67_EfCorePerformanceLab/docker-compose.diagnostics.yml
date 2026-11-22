@@ -1,0 +1,23 @@
+# Experimental diagnostics overlay: use with BOTH base and compilation compose files.
+# Shares process namespace and /tmp diagnostic socket between api and profiler.
+services:
+  api:
+    volumes:
+      - lab_diag_tmp:/tmp
+
+  profiler:
+    profiles: ["diagnostics"]
+    build:
+      context: ../..
+      dockerfile: demonstracje/67_EfCorePerformanceLab/docker/Diagnostics.Dockerfile
+    pid: "service:api"
+    user: "0:0"
+    volumes:
+      - lab_diag_tmp:/tmp
+      - ./experiments/03_Compilation/results:/output
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  lab_diag_tmp:
