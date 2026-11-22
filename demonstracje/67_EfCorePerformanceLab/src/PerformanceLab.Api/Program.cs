@@ -159,7 +159,7 @@ public sealed class SqlCommandCounter : DbCommandInterceptor
         if (_active.Value is { } state) Interlocked.Increment(ref state.Commands);
         return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
     }
-    private sealed class CounterState { public int Commands; }
+    internal sealed class CounterState { public int Commands; }
     public sealed class Measurement : IDisposable
     {
         private readonly SqlCommandCounter _owner;
