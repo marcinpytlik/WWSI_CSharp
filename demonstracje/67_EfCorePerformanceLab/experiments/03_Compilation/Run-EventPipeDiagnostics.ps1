@@ -103,8 +103,8 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     $log = "$stamp-capture.log"
     $duration = [TimeSpan]::FromSeconds($CaptureSeconds).ToString('dd\:hh\:mm\:ss')
     if ($Kind -eq 'counters') {
-        # dotnet-counters has no --duration; timeout sends SIGINT to finalize its CSV.
-        $command = "timeout --signal=INT --kill-after=5s ${CaptureSeconds}s /tools/dotnet-counters collect --process-id 1 --refresh-interval 1 --format csv --counters System.Runtime --output /output/$artifact > /output/$log 2>&1"
+        # dotnet-counters has no --duration; timeout sends the documented graceful SIGTERM.
+        $command = "timeout --signal=TERM --kill-after=20s ${CaptureSeconds}s /tools/dotnet-counters collect --process-id 1 --refresh-interval 1 --format csv --counters System.Runtime --output /output/$artifact > /output/$log 2>&1"
     } else {
         $command = "/tools/dotnet-trace collect --process-id 1 --duration $duration --profile dotnet-common,dotnet-sampled-thread-time --output /output/$artifact > /output/$log 2>&1"
     }
@@ -118,6 +118,20 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     # Collection duration is fixed to capture background/runtime activity as well.
     $remaining = [math]::Max(0, ($CaptureSeconds + 5) - $workloadWatch.Elapsed.TotalSeconds - 4)
     if ($remaining -gt 0) { Start-Sleep -Seconds ([math]::Ceiling($remaining)) }
+    # Give diagnostics tooling time to flush output after graceful termination.
+    $path = Join-Path $resultsDir $artifact
+    $waitForFile = [Diagnostics.Stopwatch]::StartNew()
+    while ((-not (Test-Path -LiteralPath $path)) -and $waitForFile.Elapsed.TotalSeconds -lt 25) {
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not (Test-Path -LiteralPath $path)) {
+        $logPath = Join-Path $resultsDir $log
+        $logTail = if (Test-Path -LiteralPath $logPath) {
+            (Get-Content -LiteralPath $logPath -Tail 30) -join ' | '
+        } else { 'No capture log found' }
+        $profilerPs = @(& docker compose --project-directory $root @files exec -T profiler ps -eo pid,ppid,args 2>&1)
+        throw "No artifact $artifact. Capture log: $logTail. Profiler processes: $($profilerPs -join '; ')"
+    }
     $size = Verify-Output $artifact
     $manifest.Add([pscustomobject]@{
         Token=$token; Mode=$Mode; Capture=$Kind
