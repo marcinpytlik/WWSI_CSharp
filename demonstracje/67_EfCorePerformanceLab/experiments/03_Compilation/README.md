@@ -143,7 +143,7 @@ git pull --ff-only
     -Modes jit `
     -Take 100 `
     -Repetitions 10 `
-    -CaptureSeconds 30 `
+    -CaptureSeconds 300 `
     -SkipTrace
 ```
 
@@ -154,7 +154,7 @@ Następnie pełny pomiar (każdy wariant posiada **osobną** sesję liczników i
     -Modes jit,r2r,composite,no-tiering `
     -Take 100 `
     -Repetitions 20 `
-    -CaptureSeconds 60
+    -CaptureSeconds 300
 ```
 
 **Jak działa skrypt:** buduje aplikację i narzędzia, odtwarza wyłącznie usługę `api`, uruchamia `profiler` w przestrzeni PID API, sprawdza widoczność procesu poleceniem `dotnet-counters ps`, wykonuje smoke test i warm-up. Następnie zbiera `System.Runtime` do CSV i osobno ślad EventPipe z profilami `dotnet-common` (m.in. GC/JIT/kompilacja) oraz `dotnet-sampled-thread-time` (próbkowanie wątków). Każdej sesji towarzyszy ten sam zestaw żądań `nplusone/include/projection/split`. Pomiary są rozdzielone: nie uruchamiamy dwóch narzędzi diagnostycznych jednocześnie.
@@ -169,9 +169,9 @@ Pliki wynikowe:
 
 **Ważne ograniczenia:**
 - Narzędzia dołączają po starcie procesu i **nie obejmują jego inicjalizacji**; ślad nie jest pomiarem cold start/JIT startowego.
-- `dotnet-counters` próbuje otrzymać SIGINT po upływie `CaptureSeconds`, aby zapisać CSV. `dotnet-trace` kończy zbieranie po wskazanym `--duration`. Jeśli plik jest pusty/brakujący, sprawdź `*-capture.log`.
+- `dotnet-counters` otrzymuje `q`, a `dotnet-trace` otrzymuje Enter przez PTY/FIFO **po zakończeniu wszystkich żądań workloadu**. Oba narzędzia zamykają sesję w trybie interaktywnym i zapisują plik. `CaptureSeconds` jest parametrem doradczym — po jego przekroczeniu skrypt zgłasza ostrzeżenie, ale nie ucina śladu. Jeśli plik jest pusty/brakujący, sprawdź `*-capture.log` i `*.exit`.
 - Profilowanie samo wpływa na wykorzystanie zasobów; pomiarów `*-workload.csv` z tej fazy **nie należy bezpośrednio porównywać** z wcześniejszymi pomiarami bez narzędzi.
-- Liczniki są próbkowane z interwałem 1 s, a krótkie serie HTTP mogą się zakończyć przed końcem śladu; warto przejrzeć artefakty i przedłużyć serię, jeśli potrzeba. Same pliki `.nettrace` **nie dowodzą**, że GC czy JIT były przyczyną różnic. Trzeba najpierw przeanalizować zdarzenia i ich czas.
+- Liczniki są próbkowane co około 1 s; zbieranie śladu obejmuje wszystkie żądania workloadu (o ile narzędzie faktycznie rozpoczęło kolekcję przed pierwszym żądaniem). Po zakończeniu porównaj `WorkloadSeconds` w manifeście, log przechwytywania i liczbę próbek. Same pliki `.nettrace` **nie dowodzą**, że GC czy JIT były przyczyną różnic. Trzeba najpierw przeanalizować zdarzenia i ich czas.
 - `profiler` działa jako root wyłącznie w lokalnym laboratorium, aby połączyć się z procesem. Nie przenoś tej konfiguracji do produkcji.
 - Nie wykonujemy `docker compose down -v`; wolumen SQL pozostaje nienaruszony. Nowy wolumen `lab_diag_tmp` zawiera tylko gniazda diagnostyczne.
 - Ślady mogą zawierać nazwy metod, stosy oraz pośrednio informacje o aplikacji. Nie publikuj surowych artefaktów z wrażliwego środowiska; tutaj laboratorium pracuje na syntetycznych danych.
@@ -193,3 +193,23 @@ Oficjalne źródła: [Diagnostics in Linux containers](https://learn.microsoft.c
 Dalszy etap to osobny test kompilacji Native AOT, analiza diagnostyki MSBuild/ILLink, weryfikacja wszystkich czterech endpointów i sprawdzenie identycznych wyników SQL. Dopiero po przejściu tych warunków można dodać Native AOT do porównania wydajnościowego. Nie należy interpretować ewentualnego błędu kompilacji jako wyniku benchmarku.
 
 Dokumentacja techniczna: [ReadyToRun](https://learn.microsoft.com/dotnet/core/deploying/ready-to-run), [EF Core Native AOT (experimental)](https://learn.microsoft.com/ef/core/performance/nativeaot-and-precompiled-queries).
+
+
+## Wyniki i zamknięcie serii 03D — 22.11.2026
+
+Ukończono rejestrację czterech wariantów, 20 iteracji na strategię i rodzaj profilowania. Dla serii **3b971dd5** zapisano łącznie 640 pomiarów operacji EF Core i osiem plików diagnostycznych. Opublikowano raport [FINAL-REPORT-2026-11-22.md](FINAL-REPORT-2026-11-22.md) z wynikami i ograniczeniami metodologicznymi.
+
+**Uwaga historyczna:** pierwotna seria 3b971dd5 korzystała ze sztywnego limitu 150 sekund dla `dotnet-trace`; podczas gdy workload trwał około 168–170 sekund. Dlatego wnioski raportu wynikają z pełnych CSV workloadu i liczników, **a nie z niekompletnych śladów .nettrace**. W aktualnej wersji skryptu usunięto to ograniczenie, ale ta poprawka wymaga osobnego testu integracyjnego po pobraniu nowego kodu.
+
+Weryfikacja nowej obsługi trace, bez ponawiania całego czterowariantowego benchmarku:
+
+```powershell
+git pull --ff-only
+./experiments/03_Compilation/Run-EventPipeDiagnostics.ps1 `
+    -Modes jit `
+    -Take 100 `
+    -Repetitions 10 `
+    -CaptureSeconds 300
+```
+
+Oczekiwane: `PASS jit counters`, `PASS jit trace`, pliki CSV i `.nettrace`; z manifeście powinny wynikać wartości `WorkloadSeconds` dla obydwu sesji. W tym eksperymencie nie są automatycznie publikowane surowe wyniki.
