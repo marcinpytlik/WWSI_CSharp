@@ -104,7 +104,7 @@ function Capture([string] $Mode, [ValidateSet('counters','trace')] [string] $Kin
     $exitFile = "$stamp.exit"
     # Both collectors use the same PTY / FIFO control channel.
     # dotnet-trace receives Enter; dotnet-counters receives q.
-    # CaptureSeconds remains a safety limit for the total workload duration.
+    # CaptureSeconds is advisory; stopping capture is driven by workload completion.
     Write-Host "Starting interactive PTY $Kind session: $stamp"
     Invoke-Compose -Arguments @('exec','-d','profiler','/bin/bash','/tools/collect-counters.sh',$stamp,$Kind)
     $fifoReady = $false
