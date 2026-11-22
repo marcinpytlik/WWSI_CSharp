@@ -1,13 +1,16 @@
 param(
     [string] $BaseUrl = "http://localhost:5087",
     [ValidateRange(1, 500)] [int] $Take = 100,
-    [ValidateRange(1, 100)] [int] $Repetitions = 5
+    [ValidateRange(1, 100)] [int] $Repetitions = 5,
+    [switch] $SkipWarmup
 )
 $ErrorActionPreference = "Stop"
 $strategies = @("nplusone", "include", "projection", "split")
-Write-Host "Warm-up for each variant..."
-foreach ($s in $strategies) {
-    $null = Invoke-RestMethod "$BaseUrl/api/orders/${s}?take=$Take"
+if (-not $SkipWarmup) {
+    Write-Host "Warm-up for each variant..."
+    foreach ($s in $strategies) {
+        $null = Invoke-RestMethod "$BaseUrl/api/orders/${s}?take=$Take"
+    }
 }
 $results = foreach ($run in 1..$Repetitions) {
     foreach ($s in $strategies) {
