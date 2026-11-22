@@ -45,7 +45,7 @@ $summary | Sort-Object Strategy | Format-Table -AutoSize
 $path = Join-Path $PSScriptRoot "benchmark-results.csv"
 $results | Export-Csv -Path $path -NoTypeInformation -Encoding utf8
 Write-Host "CSV: $path"
-if (($summary | Select-Object -ExpandProperty Orders -Unique).Count -ne 1 -or
-    ($summary | Select-Object -ExpandProperty Items -Unique).Count -ne 1) {
+if (@($summary | Select-Object -ExpandProperty Orders -Unique).Count -ne 1 -or
+    @($summary | Select-Object -ExpandProperty Items -Unique).Count -ne 1) {
     throw "Results differ in cardinality. Compare the response payloads before performance conclusions."
 }
